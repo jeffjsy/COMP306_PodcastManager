@@ -1,0 +1,88 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\jjws8\\source\\repos\\PodcastManagementSystem\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{C871912B-B50F-4409-9FA8-446FE54F43ED}|PodcastManagementSystem\\PodcastManagementSystem.csproj|c:\\users\\jjws8\\source\\repos\\podcastmanagementsystem\\podcastmanagementsystem\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{C871912B-B50F-4409-9FA8-446FE54F43ED}|PodcastManagementSystem\\PodcastManagementSystem.csproj|solutionrelative:podcastmanagementsystem\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{C871912B-B50F-4409-9FA8-446FE54F43ED}|PodcastManagementSystem\\PodcastManagementSystem.csproj|c:\\users\\jjws8\\source\\repos\\podcastmanagementsystem\\podcastmanagementsystem\\services\\parameterstoreservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{C871912B-B50F-4409-9FA8-446FE54F43ED}|PodcastManagementSystem\\PodcastManagementSystem.csproj|solutionrelative:podcastmanagementsystem\\services\\parameterstoreservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{C871912B-B50F-4409-9FA8-446FE54F43ED}|PodcastManagementSystem\\PodcastManagementSystem.csproj|c:\\users\\jjws8\\source\\repos\\podcastmanagementsystem\\podcastmanagementsystem\\interfaces\\iparameterstoreservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{C871912B-B50F-4409-9FA8-446FE54F43ED}|PodcastManagementSystem\\PodcastManagementSystem.csproj|solutionrelative:podcastmanagementsystem\\interfaces\\iparameterstoreservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{C871912B-B50F-4409-9FA8-446FE54F43ED}|PodcastManagementSystem\\PodcastManagementSystem.csproj|c:\\users\\jjws8\\source\\repos\\podcastmanagementsystem\\podcastmanagementsystem\\services\\s3service.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{C871912B-B50F-4409-9FA8-446FE54F43ED}|PodcastManagementSystem\\PodcastManagementSystem.csproj|solutionrelative:podcastmanagementsystem\\services\\s3service.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\Users\\jjws8\\source\\repos\\PodcastManagementSystem\\PodcastManagementSystem\\Program.cs",
+              "RelativeDocumentMoniker": "PodcastManagementSystem\\Program.cs",
+              "ToolTip": "C:\\Users\\jjws8\\source\\repos\\PodcastManagementSystem\\PodcastManagementSystem\\Program.cs",
+              "RelativeToolTip": "PodcastManagementSystem\\Program.cs",
+              "ViewState": "AgIAAAwAAAAAAAAAAAAAACgAAAAcAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-15T21:51:09.685Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "ParameterStoreService.cs",
+              "DocumentMoniker": "C:\\Users\\jjws8\\source\\repos\\PodcastManagementSystem\\PodcastManagementSystem\\Services\\ParameterStoreService.cs",
+              "RelativeDocumentMoniker": "PodcastManagementSystem\\Services\\ParameterStoreService.cs",
+              "ToolTip": "C:\\Users\\jjws8\\source\\repos\\PodcastManagementSystem\\PodcastManagementSystem\\Services\\ParameterStoreService.cs",
+              "RelativeToolTip": "PodcastManagementSystem\\Services\\ParameterStoreService.cs",
+              "ViewState": "AgIAABAAAAAAAAAAAAAkwCMAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-15T21:50:00.989Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "IParameterStoreService.cs",
+              "DocumentMoniker": "C:\\Users\\jjws8\\source\\repos\\PodcastManagementSystem\\PodcastManagementSystem\\Interfaces\\IParameterStoreService.cs",
+              "RelativeDocumentMoniker": "PodcastManagementSystem\\Interfaces\\IParameterStoreService.cs",
+              "ToolTip": "C:\\Users\\jjws8\\source\\repos\\PodcastManagementSystem\\PodcastManagementSystem\\Interfaces\\IParameterStoreService.cs",
+              "RelativeToolTip": "PodcastManagementSystem\\Interfaces\\IParameterStoreService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-15T21:49:10.867Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "S3Service.cs",
+              "DocumentMoniker": "C:\\Users\\jjws8\\source\\repos\\PodcastManagementSystem\\PodcastManagementSystem\\Services\\S3Service.cs",
+              "RelativeDocumentMoniker": "PodcastManagementSystem\\Services\\S3Service.cs",
+              "ToolTip": "C:\\Users\\jjws8\\source\\repos\\PodcastManagementSystem\\PodcastManagementSystem\\Services\\S3Service.cs",
+              "RelativeToolTip": "PodcastManagementSystem\\Services\\S3Service.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAADAAAABHAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-15T21:47:58.348Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

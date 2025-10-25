@@ -1,4 +1,9 @@
-﻿<!DOCTYPE html>
+﻿@using Microsoft.AspNetCore.Identity
+@inject SignInManager<IdentityUser> SignInManager
+@inject UserManager<IdentityUser> UserManager
+
+
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
@@ -25,6 +30,30 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
                         </li>
+
+                        @* --- ROLE-SPECIFIC NAVIGATION LINKS ADDED HERE --- *@
+                        @if (SignInManager.IsSignedIn(User))
+                        {
+                            @if (User.IsInRole("Admin"))
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark" asp-controller="Admin" asp-action="Dashboard">Admin Tools</a>
+                                </li>
+                            }
+
+                            @if (User.IsInRole("Podcaster"))
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark" asp-controller="Podcaster" asp-action="MyPodcasts">Podcaster Studio</a>
+                                </li>
+                            }
+
+                            @* Listener/viewer should always see the main browsing link *@
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="Listener" asp-action="Dashboard">Browse Episodes</a>
+                            </li>
+                        }
+                        @* --- END ROLE-SPECIFIC NAVIGATION --- *@
                     </ul>
                     <partial name="_LoginPartial" />
                 </div>

@@ -3,24 +3,48 @@
 @inject UserManager<IdentityUser> UserManager
 
 <ul class="navbar-nav">
-@if (SignInManager.IsSignedIn(User))
-{
-    <li class="nav-item">
-        <a  class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Manage/Index" title="Manage">Hello @User.Identity?.Name!</a>
-    </li>
-    <li class="nav-item">
-        <form  class="form-inline" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })">
-            <button  type="submit" class="nav-link btn btn-link text-dark">Logout</button>
-        </form>
-    </li>
-}
-else
-{
-    <li class="nav-item">
-        <a class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Register">Register</a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Login">Login</a>
-    </li>
-}
+    @if (SignInManager.IsSignedIn(User))
+    {
+        // --- Role Logic to determine badge color and text ---
+        string roleTag = "Unknown Role";
+        string roleClass = "bg-secondary"; // Default badge color
+
+        if (User.IsInRole("Admin"))
+        {
+            roleTag = "Admin";
+            roleClass = "bg-danger";
+        }
+        else if (User.IsInRole("Podcaster"))
+        {
+            roleTag = "Podcaster";
+            roleClass = "bg-primary";
+        }
+        else if (User.IsInRole("Listener/viewer"))
+        {
+            roleTag = "Listener";
+            roleClass = "bg-info";
+        }
+
+        <li class="nav-item">
+            @* Display the username and the role badge *@
+            <a id="manage" class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Manage" title="Manage">
+                Hello @UserManager.GetUserName(User)!
+                <span class="badge @roleClass">@roleTag</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <form class="form-inline" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })">
+                <button type="submit" class="nav-link btn btn-link text-dark">Logout</button>
+            </form>
+        </li>
+    }
+    else
+    {
+        <li class="nav-item">
+            <a class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Register">Register</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Login">Login</a>
+        </li>
+    }
 </ul>

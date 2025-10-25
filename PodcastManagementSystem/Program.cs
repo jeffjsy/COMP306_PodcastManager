@@ -70,24 +70,26 @@ builder.Services.AddScoped<IParameterStoreService, ParameterStoreService>();
 var app = builder.Build();
 
 // Adding roles 
-using (var scope = app.Services.CreateScope())
-{
-    var serviceProvider = scope.ServiceProvider;
-    var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+//using (var scope = app.Services.CreateScope())
+//{
+//    var serviceProvider = scope.ServiceProvider;
+//    var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole>>();
 
-    // Required roles: Podcaster, Listener/viewer, Admin
-    string[] roleNames = { "Admin", "Podcaster", "Listener/viewer" };
+//    // Required roles: Podcaster, Listener/viewer, Admin
+//    string[] roleNames = { "Admin", "Podcaster", "Listener/viewer" };
 
-    foreach (var roleName in roleNames)
-    {
-        // Check if the role already exists asynchronously
-        if (!roleManager.RoleExistsAsync(roleName).GetAwaiter().GetResult())
-        {
-            // If the role doesn't exist, create it
-            roleManager.CreateAsync(new IdentityRole(roleName)).GetAwaiter().GetResult();
-        }
-    }
-}
+//    foreach (var roleName in roleNames)
+//    {
+//        // Check if the role already exists asynchronously
+//        if (!roleManager.RoleExistsAsync(roleName).GetAwaiter().GetResult())
+//        {
+//            // If the role doesn't exist, create it
+//            roleManager.CreateAsync(new IdentityRole(roleName)).GetAwaiter().GetResult();
+//        }
+//    }
+//}
+
+await CreateRolesAsync(app);
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -113,3 +115,31 @@ app.MapControllerRoute(
 app.MapRazorPages();
 
 app.Run();
+
+
+
+
+
+
+
+
+
+
+
+
+static async Task CreateRolesAsync(WebApplication app)
+{
+    using var scope = app.Services.CreateScope();
+    var serviceProvider = scope.ServiceProvider;
+    var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+
+    string[] roleNames = { "Admin", "Podcaster", "Listener/viewer" };
+
+    foreach (var roleName in roleNames)
+    {
+        if (!await roleManager.RoleExistsAsync(roleName))
+        {
+            await roleManager.CreateAsync(new IdentityRole(roleName));
+        }
+    }
+}

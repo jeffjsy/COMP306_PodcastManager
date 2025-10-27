@@ -1,9 +1,17 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using System;
 
 namespace PodcastManagementSystem.Models
 {
-    public class ApplicationUser : IdentityUser
+    public enum UserRole
     {
-        public string Role { get; set; } // Podcaster, Listener/viewer, Admin
+        Podcaster = 0,
+        ListenerViewer = 1,
+        Admin = 2
+    }
+
+    public class ApplicationUser : IdentityUser<Guid>
+    {
+        public UserRole Role { get; set; }
     }
 }

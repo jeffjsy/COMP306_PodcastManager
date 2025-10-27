@@ -1,15 +1,16 @@
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.DataModel;
+using Amazon.Extensions.NETCore.Setup;
 using Amazon.S3;
+using Amazon.SimpleSystemsManagement;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using PodcastManagementSystem.Data;
 using PodcastManagementSystem.Interfaces;
+using PodcastManagementSystem.Models;
 using PodcastManagementSystem.Repositories;
-using Amazon.Extensions.NETCore.Setup;
-using Amazon.SimpleSystemsManagement;
 using PodcastManagementSystem.Services;
-using Microsoft.Extensions.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,18 +27,29 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
 
+//No need for defaultIdentity as we have specific roles and therfore set custom identities about 10 lines below
+//builder.Services.AddDefaultIdentity<ApplicationUser>(options => options.SignIn.RequireConfirmedAccount = true).AddEntityFrameworkStores<ApplicationDbContext>();
+
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 
 // b. Identity Configuration 
 
-builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
+builder.Services.AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
 {
     options.SignIn.RequireConfirmedAccount = true;
 })
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultUI() // Keep this here to register the Identity Pages
 .AddDefaultTokenProviders();
+
+//builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
+//{
+//    options.SignIn.RequireConfirmedAccount = true;
+//})
+//.AddEntityFrameworkStores<ApplicationDbContext>()
+//.AddDefaultUI() // Keep this here to register the Identity Pages
+//.AddDefaultTokenProviders();
 
 // c. MVC/Controllers
 builder.Services.AddControllersWithViews();
@@ -131,7 +143,7 @@ static async Task CreateRolesAsync(WebApplication app)
 {
     using var scope = app.Services.CreateScope();
     var serviceProvider = scope.ServiceProvider;
-    var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+    var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
 
     string[] roleNames = { "Admin", "Podcaster", "Listener/viewer" };
 
@@ -139,7 +151,7 @@ static async Task CreateRolesAsync(WebApplication app)
     {
         if (!await roleManager.RoleExistsAsync(roleName))
         {
-            await roleManager.CreateAsync(new IdentityRole(roleName));
+            await roleManager.CreateAsync(new IdentityRole<Guid>(roleName));
         }
     }
 }

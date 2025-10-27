@@ -13,9 +13,9 @@ namespace PodcastManagementSystem.Controllers
     {
         private readonly IPodcastRepository _podcastRepo;
         private readonly ICommentRepository _commentRepo;
-        private readonly UserManager<IdentityUser> _userManager;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public ListenerController(IPodcastRepository podcastRepo, ICommentRepository commentRepo, UserManager<IdentityUser> userManager)
+        public ListenerController(IPodcastRepository podcastRepo, ICommentRepository commentRepo, UserManager<ApplicationUser> userManager)
         {
             _podcastRepo = podcastRepo;
             _commentRepo = commentRepo;

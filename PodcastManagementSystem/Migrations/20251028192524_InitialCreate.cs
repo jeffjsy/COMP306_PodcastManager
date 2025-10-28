@@ -30,7 +30,7 @@ namespace PodcastManagementSystem.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Role = table.Column<int>(type: "int", nullable: false),
+                    Role = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     UserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     NormalizedUserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     Email = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
@@ -59,7 +59,7 @@ namespace PodcastManagementSystem.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     Title = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Description = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    CreatorID = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    CreatorID = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     CreatedDate = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
                 constraints: table =>
@@ -203,13 +203,19 @@ namespace PodcastManagementSystem.Migrations
                 {
                     SubscriptionID = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    UserID = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    UserID = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     PodcastID = table.Column<int>(type: "int", nullable: false),
                     SubscribedDate = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Subscriptions", x => x.SubscriptionID);
+                    table.ForeignKey(
+                        name: "FK_Subscriptions_AspNetUsers_UserID",
+                        column: x => x.UserID,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_Subscriptions_Podcasts_PodcastID",
                         column: x => x.PodcastID,
@@ -266,6 +272,11 @@ namespace PodcastManagementSystem.Migrations
                 name: "IX_Subscriptions_PodcastID",
                 table: "Subscriptions",
                 column: "PodcastID");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Subscriptions_UserID",
+                table: "Subscriptions",
+                column: "UserID");
         }
 
         /// <inheritdoc />

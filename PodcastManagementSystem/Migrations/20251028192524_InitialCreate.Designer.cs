@@ -12,7 +12,7 @@ using PodcastManagementSystem.Data;
 namespace PodcastManagementSystem.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20251027181944_InitialCreate")]
+    [Migration("20251028192524_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -20,7 +20,7 @@ namespace PodcastManagementSystem.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.8")
+                .HasAnnotation("ProductVersion", "8.0.21")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -199,8 +199,10 @@ namespace PodcastManagementSystem.Migrations
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("bit");
 
-                    b.Property<int>("Role")
-                        .HasColumnType("int");
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("nvarchar(max)");
@@ -271,9 +273,8 @@ namespace PodcastManagementSystem.Migrations
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("CreatorID")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<Guid>("CreatorID")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Description")
                         .IsRequired()
@@ -302,13 +303,14 @@ namespace PodcastManagementSystem.Migrations
                     b.Property<DateTime>("SubscribedDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("UserID")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<Guid>("UserID")
+                        .HasColumnType("uniqueidentifier");
 
                     b.HasKey("SubscriptionID");
 
                     b.HasIndex("PodcastID");
+
+                    b.HasIndex("UserID");
 
                     b.ToTable("Subscriptions");
                 });
@@ -378,17 +380,32 @@ namespace PodcastManagementSystem.Migrations
             modelBuilder.Entity("PodcastManagementSystem.Models.Subscription", b =>
                 {
                     b.HasOne("PodcastManagementSystem.Models.Podcast", "Podcast")
-                        .WithMany()
+                        .WithMany("Subscriptions")
                         .HasForeignKey("PodcastID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("PodcastManagementSystem.Models.ApplicationUser", "User")
+                        .WithMany("Subscriptions")
+                        .HasForeignKey("UserID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.Navigation("Podcast");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("PodcastManagementSystem.Models.ApplicationUser", b =>
+                {
+                    b.Navigation("Subscriptions");
                 });
 
             modelBuilder.Entity("PodcastManagementSystem.Models.Podcast", b =>
                 {
                     b.Navigation("Episodes");
+
+                    b.Navigation("Subscriptions");
                 });
 #pragma warning restore 612, 618
         }

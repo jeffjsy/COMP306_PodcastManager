@@ -11,7 +11,9 @@ namespace PodcastManagementSystem.Models
         public int EpisodeID { get; set; }
 
         // PodcastID (Foreign Key) 
+        [ForeignKey("PodcastID")]
         public int PodcastID { get; set; }
+
 
         // Title 
         [Required]

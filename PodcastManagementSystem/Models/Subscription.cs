@@ -12,7 +12,9 @@ namespace PodcastManagementSystem.Models
 
         // UserID (Foreign Key to the Users table) 
         [Required]
-        public string UserID { get; set; }
+        //public string UserID { get; set; }
+        public Guid UserID { get; set; } // FK to ApplicationUser
+        public ApplicationUser User { get; set; } // Navigation property
 
         // PodcastID (Foreign Key to the Podcast table) 
         public int PodcastID { get; set; }

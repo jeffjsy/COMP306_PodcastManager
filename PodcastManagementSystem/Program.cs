@@ -37,7 +37,7 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 builder.Services.AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
 {
-    options.SignIn.RequireConfirmedAccount = true;
+    options.SignIn.RequireConfirmedAccount = false;// set to false on Purpose by Tomislav. This otherwise we must set up email AND phone verification (WAAAAAY out of scope of this project.)
 })
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultUI() // Keep this here to register the Identity Pages

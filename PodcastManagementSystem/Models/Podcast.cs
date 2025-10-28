@@ -18,12 +18,14 @@ namespace PodcastManagementSystem.Models
         public string Description { get; set; }
 
         // CreatorID 
-        public string CreatorID { get; set; }
+        public Guid CreatorID { get; set; }
 
         // CreatedDate 
         public DateTime CreatedDate { get; set; }
 
         // Navigation property for related episodes
-        public ICollection<Episode> Episodes { get; set; }
+        public ICollection<Episode> Episodes { get; set; } = new List<Episode>();
+        public ICollection<Subscription> Subscriptions { get; set; } = new List<Subscription>();
+
     }
 }

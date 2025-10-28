@@ -13,5 +13,7 @@ namespace PodcastManagementSystem.Models
     public class ApplicationUser : IdentityUser<Guid>
     {
         public UserRole Role { get; set; }
+        public List<Subscription> Subscriptions { get; set; } = new(); // Navigation
+
     }
 }

@@ -26,6 +26,7 @@ namespace PodcastManagementSystem.Areas.Identity.Pages.Account
     {
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly RoleManager<ApplicationUser> _roleManager;
         private readonly IUserStore<ApplicationUser> _userStore;
         private readonly IUserEmailStore<ApplicationUser> _emailStore;
         private readonly ILogger<RegisterModel> _logger;
@@ -111,34 +112,60 @@ namespace PodcastManagementSystem.Areas.Identity.Pages.Account
         {
             returnUrl ??= Url.Content("~/");
             ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
+
             if (ModelState.IsValid)
             {
                 var user = CreateUser();
 
                 await _userStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
                 await _emailStore.SetEmailAsync(user, Input.Email, CancellationToken.None);
+
+                // Assign the default enum role for new users
+                user.Role = UserRole.ListenerViewer;
+
+                // Create user in database
                 var result = await _userManager.CreateAsync(user, Input.Password);
 
                 if (result.Succeeded)
                 {
                     _logger.LogInformation("User created a new account with password.");
 
-                    var defaultRole = "Listener/viewer";
-
-                    await _userManager.AddToRoleAsync(user, defaultRole);
-
+                    // Sync with ASP.NET Identity role system
+                    var defaultRoleName = user.Role.ToString(); // "ListenerViewer"
+                    if (!await _userManager.IsInRoleAsync(user, defaultRoleName))
+                    {
+                        if (!await _userManager.IsInRoleAsync(user, defaultRoleName))
+                        {
+                            var roleExists = await _roleManager.RoleExistsAsync(defaultRoleName);
+                            if (roleExists)
+                            {
+                                // This step is where aspNetUserRoles table is populated/ added to
+                                await _userManager.AddToRoleAsync(user, defaultRoleName);
+                            }
+                            else
+                            {
+                                _logger.LogWarning($"Role {defaultRoleName} does not exist!");
+                            }
+                        }
+                    }
+                    // Email confirmation link (optional)
                     var userId = await _userManager.GetUserIdAsync(user);
                     var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
                     code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
+
                     var callbackUrl = Url.Page(
                         "/Account/ConfirmEmail",
                         pageHandler: null,
                         values: new { area = "Identity", userId = userId, code = code, returnUrl = returnUrl },
                         protocol: Request.Scheme);
 
-                    await _emailSender.SendEmailAsync(Input.Email, "Confirm your email",
-                        $"Please confirm your account by <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clicking here</a>.");
+                    await _emailSender.SendEmailAsync(
+                        Input.Email,
+                        "Confirm your email",
+                        $"Please confirm your account by <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clicking here</a>."
+                    );
 
+                    // Auto-sign-in if confirmation not required
                     if (_userManager.Options.SignIn.RequireConfirmedAccount)
                     {
                         return RedirectToPage("RegisterConfirmation", new { email = Input.Email, returnUrl = returnUrl });
@@ -149,6 +176,8 @@ namespace PodcastManagementSystem.Areas.Identity.Pages.Account
                         return LocalRedirect(returnUrl);
                     }
                 }
+
+                // Handle creation errors
                 foreach (var error in result.Errors)
                 {
                     ModelState.AddModelError(string.Empty, error.Description);
@@ -158,6 +187,7 @@ namespace PodcastManagementSystem.Areas.Identity.Pages.Account
             // If we got this far, something failed, redisplay form
             return Page();
         }
+
 
         private ApplicationUser CreateUser()
         {

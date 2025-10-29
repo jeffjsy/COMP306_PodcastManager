@@ -101,7 +101,13 @@ var app = builder.Build();
 //    }
 //}
 
-await CreateRolesAsync(app);
+//seeds User Roles onto db on every run of app (To ensure db has Roles)
+using (var scope = app.Services.CreateScope())
+{
+    await SeedRolesCreatedAsync(scope.ServiceProvider);
+    await SeedTestListenerViewerUserAsync(scope.ServiceProvider);
+}
+
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -139,19 +145,56 @@ app.Run();
 
 
 
-static async Task CreateRolesAsync(WebApplication app)
+//static async Task CreateRolesAsync(WebApplication app)
+//{
+//    using var scope = app.Services.CreateScope();
+//    var serviceProvider = scope.ServiceProvider;
+//    var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
+
+//    string[] roleNames = { "Admin", "Podcaster", "Listener/viewer" };
+
+//    foreach (var roleName in roleNames)
+//    {
+//        if (!await roleManager.RoleExistsAsync(roleName))
+//        {
+//            await roleManager.CreateAsync(new IdentityRole<Guid>(roleName));
+//        }
+//    }
+//}
+
+async Task SeedRolesCreatedAsync(IServiceProvider services)
 {
-    using var scope = app.Services.CreateScope();
-    var serviceProvider = scope.ServiceProvider;
-    var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
+    using var scope = services.CreateScope();
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
 
-    string[] roleNames = { "Admin", "Podcaster", "Listener/viewer" };
+    string[] roles = { "Admin", "Podcaster", "ListenerViewer" };
 
-    foreach (var roleName in roleNames)
+    foreach (var role in roles)
     {
-        if (!await roleManager.RoleExistsAsync(roleName))
+        if (!await roleManager.RoleExistsAsync(role))
         {
-            await roleManager.CreateAsync(new IdentityRole<Guid>(roleName));
+            await roleManager.CreateAsync(new IdentityRole<Guid>(role));
         }
+    }
+}
+
+async Task SeedTestListenerViewerUserAsync(IServiceProvider services)
+{
+    using var scope = services.CreateScope();
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
+
+    var email = "listenerviewer@example.com";
+    var user = await userManager.FindByEmailAsync(email);
+    if (user == null)
+    {
+        user = new ApplicationUser
+        {
+            UserName = email,
+            Email = email,
+            Role = UserRole.ListenerViewer
+        };
+        await userManager.CreateAsync(user, "Test123!");
+        await userManager.AddToRoleAsync(user, user.Role.ToString());
     }
 }

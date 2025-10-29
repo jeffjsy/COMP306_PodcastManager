@@ -109,71 +109,57 @@ namespace PodcastManagementSystem.Areas.Identity.Pages.Account
         public async Task<IActionResult> OnPostAsync(string returnUrl = null)
         {
             returnUrl ??= Url.Content("~/");
-
             ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
 
-            if (ModelState.IsValid)
+            if (!ModelState.IsValid)
+                return Page();
+
+            // Find user by email
+            var user = await _userManager.FindByEmailAsync(Input.Email);
+            if (user == null)
             {
-                var user = await _userManager.FindByEmailAsync(Input.Email);
-                if (user == null)
-                {
-                    ModelState.AddModelError(string.Empty, "Invalid login attempt.");
-                    return Page();
-                }
+                ModelState.AddModelError(string.Empty, "Invalid login attempt.");
+                return Page();
+            }
 
-                // This doesn't count login failures towards account lockout
-                // To enable password failures to trigger account lockout, set lockoutOnFailure: true
-                var result = await _signInManager.PasswordSignInAsync(user.UserName, Input.Password, Input.RememberMe, lockoutOnFailure: false); //public virtual async Task<SignInResult> PasswordSignInAsync(TUser user, string password, bool isPersistent, bool lockoutOnFailure)
-                
-                var roles = await _userManager.GetRolesAsync(user); // returns IList<string>
-                if (result.Succeeded)
-                {
-                    //_logger.LogInformation("User logged in.");
+            // Sign in using username (Identity requires UserName)
+            var result = await _signInManager.PasswordSignInAsync(
+                user.UserName,
+                Input.Password,
+                Input.RememberMe,
+                lockoutOnFailure: false);
 
-                    if (roles.Contains("ListenerViewer"))
-                    {
+            if (result.Succeeded)
+            {
+                _logger.LogInformation($"User '{user.Email}' logged in successfully.");
+
+                // Redirect based on enum Role (ApplicationUser.Role)
+                switch (user.Role)
+                {
+                    case UserRole.Admin:
                         return LocalRedirect("/Admin/Index");
-                    }
-                    else if (roles.Contains("Podcaster"))
-                    {
+                    case UserRole.Podcaster:
                         return LocalRedirect("/Podcaster/Index");
-                    }
-                    else if (roles.Contains("Admin"))
-                    {
-                        return LocalRedirect("/Admin/Index");
-                    }
-                    else {
-                        // error shouldnt be possible only 3 roles exist ("ListenerViewer", "Podcaster", & "Admin")
-                        return  LocalRedirect(returnUrl);
-                    }
-                    // Redirect based on role
-                    //return user.Role switch
-                    //{
-                    //    UserRole.Admin => LocalRedirect("/Admin/Index"),
-                    //    UserRole.Podcaster => LocalRedirect("/Podcaster/Index"),
-                    //    UserRole.ListenerViewer => LocalRedirect("/Listener/Index"), //TODO : fix routing for redirect ListenerViewer after login
-                    //    _ => LocalRedirect(returnUrl)
-                    //};
-
-                    //return LocalRedirect(returnUrl);
-                }
-                if (result.RequiresTwoFactor)
-                {
-                    return RedirectToPage("./LoginWith2fa", new { ReturnUrl = returnUrl, RememberMe = Input.RememberMe });
-                }
-                if (result.IsLockedOut)
-                {
-                    _logger.LogWarning("User account locked out.");
-                    return RedirectToPage("./Lockout");
-                }
-                else
-                {
-                    ModelState.AddModelError(string.Empty, "Invalid login attempt.");
-                    return Page();
+                    case UserRole.ListenerViewer:
+                        return LocalRedirect("/ListenerViewer/Index");
+                    default:
+                        return LocalRedirect(returnUrl);
                 }
             }
 
-            // If we got this far, something failed, redisplay form
+            if (result.RequiresTwoFactor)
+            {
+                return RedirectToPage("./LoginWith2fa", new { ReturnUrl = returnUrl, RememberMe = Input.RememberMe });
+            }
+
+            if (result.IsLockedOut)
+            {
+                _logger.LogWarning($"User '{user.Email}' account locked out.");
+                return RedirectToPage("./Lockout");
+            }
+
+            // Fallback for failed attempts
+            ModelState.AddModelError(string.Empty, "Invalid login attempt.");
             return Page();
         }
     }

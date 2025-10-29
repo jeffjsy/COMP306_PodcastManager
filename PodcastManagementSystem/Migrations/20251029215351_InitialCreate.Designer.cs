@@ -12,7 +12,7 @@ using PodcastManagementSystem.Data;
 namespace PodcastManagementSystem.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20251028192524_InitialCreate")]
+    [Migration("20251029215351_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />

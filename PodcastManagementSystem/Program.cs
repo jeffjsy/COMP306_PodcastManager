@@ -76,7 +76,8 @@ builder.Services.AddScoped<IDynamoDBContext, DynamoDBContext>();
 builder.Services.AddScoped<ICommentRepository, CommentRepository>();
 builder.Services.AddScoped<IPodcastRepository, PodcastRepository>();
 builder.Services.AddScoped<IS3Service, S3Service>();             
-builder.Services.AddScoped<IParameterStoreService, ParameterStoreService>(); 
+builder.Services.AddScoped<IParameterStoreService, ParameterStoreService>();
+builder.Services.AddScoped<IEpisodeRepository, EpisodeRepository>();
 // ----------------------------------------------------
 
 var app = builder.Build();

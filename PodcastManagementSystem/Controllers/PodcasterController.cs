@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -7,6 +8,9 @@ using Microsoft.AspNetCore.Mvc;
 using PodcastManagementSystem.Interfaces;
 using PodcastManagementSystem.Models;
 using PodcastManagementSystem.Models.ViewModels;
+using System.Linq;
+using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Http;
 
 namespace PodcastManagementSystem.Controllers
 {
@@ -15,30 +19,34 @@ namespace PodcastManagementSystem.Controllers
     public class PodcasterController : Controller
     {
         private readonly IPodcastRepository _podcastRepository;
+        private readonly IEpisodeRepository _episodeRepository;
         private readonly IS3Service _s3Service;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly ILogger<PodcasterController> _logger;
 
         public PodcasterController(
             IPodcastRepository podcastRepository,
+            IEpisodeRepository episodeRepository,
             IS3Service s3Service,
-            UserManager<ApplicationUser> userManager)
+            UserManager<ApplicationUser> userManager,
+            ILogger<PodcasterController> logger)
         {
             _podcastRepository = podcastRepository;
+            _episodeRepository = episodeRepository;
             _s3Service = s3Service;
             _userManager = userManager;
+            _logger = logger;
         }
 
         // ---------------------------------------------------------------------
         // 1. PODCAST DASHBOARD (READ)
         // ---------------------------------------------------------------------
-
         // GET: Podcaster/Dashboard - Lists all podcasts created by the current user
         public async Task<IActionResult> Dashboard()
         {
             var userId = _userManager.GetUserId(User);
             if (userId == null)
             {
-                // Should not happen if Authorize attribute is working, but safe check.
                 return Unauthorized();
             }
 
@@ -51,13 +59,12 @@ namespace PodcastManagementSystem.Controllers
         }
 
         // ---------------------------------------------------------------------
-        // 2. CREATE PODCAST (CREATE)
+        // 2. CREATE / MANAGE PODCAST (CRUD)
         // ---------------------------------------------------------------------
 
         // GET: Podcaster/CreatePodcast
         public IActionResult CreatePodcast()
         {
-            // Returning an empty ViewModel for the form
             return View(new PodcastViewModel());
         }
 
@@ -74,7 +81,6 @@ namespace PodcastManagementSystem.Controllers
             var userId = _userManager.GetUserId(User);
             if (userId == null) return Unauthorized();
 
-            // Map ViewModel to the domain model
             var podcast = new Podcast
             {
                 Title = model.Title,
@@ -85,8 +91,42 @@ namespace PodcastManagementSystem.Controllers
 
             await _podcastRepository.AddPodcastAsync(podcast);
 
-            // Redirect to the new podcast's episode list, or back to the dashboard
             return RedirectToAction(nameof(Dashboard));
+
+        }
+
+        // GET: Podcaster/ManagePodcast/5
+        public async Task<IActionResult> ManagePodcast(int podcastId)
+        {
+            // 1. Get the current user's ID (a string)
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            // 2. Convert the string userId to a Guid
+            if (!Guid.TryParse(userIdString, out Guid userId))
+            {
+                return Forbid();
+            }
+
+            // 3. Get the specific podcast channel
+            var podcast = await _podcastRepository.GetPodcastByIdAsync(podcastId);
+
+            // Security Check: Ensure the podcast exists AND belongs to the current Podcaster
+            if (podcast == null || podcast.CreatorID != userId)
+            {
+                return NotFound();
+            }
+
+            // 4. Get all episodes for that channel (using IPodcastRepository method)
+            var episodes = await _podcastRepository.GetEpisodesByPodcastIdAsync(podcastId);
+
+            // 5. Populate the ViewModel
+            var viewModel = new ChannelDetailsViewModel
+            {
+                Channel = podcast,
+                Episodes = episodes.ToList()
+            };
+
+            return View(viewModel);
         }
 
         // ---------------------------------------------------------------------
@@ -97,37 +137,76 @@ namespace PodcastManagementSystem.Controllers
         public async Task<IActionResult> AddEpisode(int podcastId)
         {
             var podcast = await _podcastRepository.GetPodcastByIdAsync(podcastId);
+            var currentUserId = _userManager.GetUserId(User);
 
-            if (podcast == null || podcast.CreatorID != Guid.Parse(_userManager.GetUserId(User)))
+            // Security check: Verify ownership
+            if (podcast == null || podcast.CreatorID != Guid.Parse(currentUserId))
             {
-                return NotFound(); // Podcast not found or not owned by current user
+                return NotFound();
             }
 
-            // You would pass an EpisodeViewModel to the View here
-            var viewModel = new EpisodeViewModel { PodcastID = podcastId };
+            var viewModel = new AddEpisodeViewModel { PodcastID = podcastId };
+            ViewData["PodcastTitle"] = podcast.Title; 
             return View(viewModel);
         }
 
         // POST: Podcaster/AddEpisode
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> AddEpisode(EpisodeViewModel model)
+        [RequestSizeLimit(200_000_000)]
+        public async Task<IActionResult> AddEpisode(AddEpisodeViewModel model)
         {
+            //  Check validation failure
             if (!ModelState.IsValid || model.AudioFile == null)
             {
+                _logger.LogWarning("Episode upload failed validation for PodcastID: {PodcastId}. Errors: {@Errors}",
+                    model.PodcastID, ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage));
+
+                var podcast = await _podcastRepository.GetPodcastByIdAsync(model.PodcastID);
+                ViewData["PodcastTitle"] = podcast?.Title;
+
+                // If this returns, check validation messages in the browser
                 return View(model);
             }
+
+            // 🌟 LOG POINT 2: Before S3 Upload
+            _logger.LogInformation("Validation passed. Attempting S3 upload for episode '{Title}' on podcast {Id}.",
+                model.Title, model.PodcastID);
 
             // 1. Upload the file to S3
-            // The file name should be unique, e.g., using a Guid
             var fileKey = $"episodes/{model.PodcastID}/{Guid.NewGuid()}-{model.AudioFile.FileName}";
-            var audioFileUrl = await _s3Service.UploadFileAsync(model.AudioFile, fileKey);
+            string audioFileUrl = null;
 
-            if (string.IsNullOrEmpty(audioFileUrl))
+            // Use a try-catch block to specifically log S3 exceptions
+            try
             {
-                ModelState.AddModelError("", "Error uploading file to S3 storage.");
+                audioFileUrl = await _s3Service.UploadFileAsync(model.AudioFile, fileKey);
+            }
+            catch (Exception ex)
+            {
+                // 🛑 CRITICAL LOGGING: Logs the full exception details
+                _logger.LogError(ex, "S3 Upload FAILED for file key {Key}. Check AWS credentials and bucket configuration.", fileKey);
+                ModelState.AddModelError("", "S3 service error: Could not upload file. Check server logs for details.");
+
+                var podcast = await _podcastRepository.GetPodcastByIdAsync(model.PodcastID);
+                ViewData["PodcastTitle"] = podcast?.Title;
                 return View(model);
             }
+
+            // 🌟 LOG POINT 3: Check S3 URL result
+            if (string.IsNullOrEmpty(audioFileUrl))
+            {
+                _logger.LogError("S3 service returned a NULL or empty URL for file key {Key}. Check S3 service return logic.", fileKey);
+                ModelState.AddModelError("", "Storage error: File upload resulted in an invalid URL.");
+
+                var podcast = await _podcastRepository.GetPodcastByIdAsync(model.PodcastID);
+                ViewData["PodcastTitle"] = podcast?.Title;
+                return View(model);
+            }
+
+            // 🌟 LOG POINT 4: Before Repository Save
+            _logger.LogInformation("S3 upload successful (URL: {Url}). Saving episode metadata to database.", audioFileUrl);
+
 
             // 2. Save metadata to the database
             var episode = new Episode
@@ -136,18 +215,22 @@ namespace PodcastManagementSystem.Controllers
                 Title = model.Title,
                 ReleaseDate = DateTime.UtcNow,
                 AudioFileURL = audioFileUrl,
-                // You may calculate DurationMinutes here if needed, or rely on user input
                 DurationMinutes = model.DurationMinutes
             };
 
-            await _podcastRepository.AddEpisodeAsync(episode);
+            // 3. Save the episode using the IEpisodeRepository
+            await _episodeRepository.AddEpisodeAsync(episode);
 
-            // 3. Redirect to the episode listing
-            return RedirectToAction(nameof(Dashboard));
+            // 🌟 LOG POINT 5: Success
+            _logger.LogInformation("Episode '{Title}' successfully published and saved.", model.Title);
+
+            // 4. Redirect to the episode listing (ManagePodcast)
+            TempData["SuccessMessage"] = $"Episode '{episode.Title}' published successfully!";
+            return RedirectToAction(nameof(ManagePodcast), new { podcastId = model.PodcastID });
         }
 
         // ---------------------------------------------------------------------
-        // 4. CLEANUP (PLACEHOLDER)
+        // 4. EPISODE DELETION (DELETE)
         // ---------------------------------------------------------------------
 
         // Here is where Edit/Delete actions for Podcasts and Episodes here.
@@ -193,5 +276,8 @@ namespace PodcastManagementSystem.Controllers
             return RedirectToAction(nameof(Dashboard));
         }
 
+            // 4. Redirect back to the episode management view
+            return RedirectToAction(nameof(ManagePodcast), new { podcastId = podcastId });
+        }
     }
 }

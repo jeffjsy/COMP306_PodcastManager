@@ -139,9 +139,9 @@ namespace PodcastManagementSystem.Areas.Identity.Pages.Account
                     case UserRole.Admin:
                         return LocalRedirect("/Admin/Index");
                     case UserRole.Podcaster:
-                        return LocalRedirect("/Podcaster/Index");
+                        return LocalRedirect("/Podcaster/Dashboard");
                     case UserRole.ListenerViewer:
-                        return LocalRedirect("/ListenerViewer/Index");
+                        return LocalRedirect("/ListenerViewer/Dashboard");
                     default:
                         return LocalRedirect(returnUrl);
                 }

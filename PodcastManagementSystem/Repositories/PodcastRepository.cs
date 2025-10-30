@@ -98,6 +98,52 @@ namespace PodcastManagementSystem.Repositories
         {
             return await _context.Subscriptions.AnyAsync(s => s.UserID == userId && s.PodcastID == podcastId);
         }
+
+        // ---------------------------------------------------------------------
+        // --- 4. Podcaster/Creator Management ---
+        // ---------------------------------------------------------------------
+
+        public async Task<List<Podcast>> GetPodcastsByCreatorIdAsync(Guid creatorId)
+        {
+            // Fetches all podcasts where the CreatorID matches the provided GUID
+            return await _context.Podcasts
+                .Where(p => p.CreatorID == creatorId)
+                .ToListAsync();
+        }
+
+        public async Task AddPodcastAsync(Podcast podcast)
+        {
+            // Adds a new podcast entry to the database
+            _context.Podcasts.Add(podcast);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task<Podcast> GetPodcastByIdAsync(int podcastId)
+        {
+            // Fetches a single podcast by its primary key
+            return await _context.Podcasts.FindAsync(podcastId);
+        }
+
+        public async Task AddEpisodeAsync(Episode episode)
+        {
+            // Adds a new episode entry (with the S3 URL) to the database
+            _context.Episodes.Add(episode);
+            await _context.SaveChangesAsync();
+        }
+        public async Task UpdateEpisodeAsync(Episode episode)
+        {
+            _context.Entry(episode).State = EntityState.Modified;
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task<IEnumerable<Episode>> GetEpisodesByPodcastIdAsync(int podcastId)
+        {
+            // This retrieves all episodes where the foreign key PodcastID matches the one passed in.
+            return await _context.Episodes
+                .Where(e => e.PodcastID == podcastId)
+                .OrderByDescending(e => e.ReleaseDate) // Order by latest release date
+                .ToListAsync();
+        }
     }
 }
 

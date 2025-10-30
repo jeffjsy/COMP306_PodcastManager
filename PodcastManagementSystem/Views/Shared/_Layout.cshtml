@@ -24,36 +24,50 @@
                 </button>
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     <ul class="navbar-nav flex-grow-1">
+
+                        @* 1. ALWAYS VISIBLE: Home Link (Public Landing) *@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
                         </li>
+
+                        @* 2. ALWAYS VISIBLE: Public Podcast Discovery Link (Main Listener/Viewer Page) *@
+                        @* This should be the main browse link for ALL users, including unauthenticated ones. *@
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+                            <a class="nav-link text-dark" asp-area="" asp-controller="ListenerViewer" asp-action="Dashboard">Discover Podcasts</a>
                         </li>
 
-                        @* --- ROLE-SPECIFIC NAVIGATION LINKS ADDED HERE --- *@
+                        @* --- ROLE-SPECIFIC NAVIGATION LINKS (Only visible when signed in) --- *@
                         @if (SignInManager.IsSignedIn(User))
                         {
-                            @if (User.IsInRole("Admin"))
+                            // 3. PODCASTER Link (Visible only to Podcasters)
+                            if (User.IsInRole("Podcaster"))
                             {
                                 <li class="nav-item">
-                                    <a class="nav-link text-dark" asp-controller="Admin" asp-action="Dashboard">Admin Tools</a>
+                                    <a class="nav-link text-dark" asp-area="" asp-controller="Podcaster" asp-action="Dashboard">🎙️ My Studio</a>
+                                    @* NOTE: Changed asp-action to Dashboard to match the login redirect we fixed earlier. *@
                                 </li>
                             }
 
-                            @if (User.IsInRole("Podcaster"))
+                            // 4. ADMIN Link (Visible only to Admins)
+                            if (User.IsInRole("Admin"))
                             {
                                 <li class="nav-item">
-                                    <a class="nav-link text-dark" asp-controller="Podcaster" asp-action="MyPodcasts">Podcaster Studio</a>
+                                    <a class="nav-link text-dark" asp-area="" asp-controller="Admin" asp-action="Index">🔑 Admin Panel</a>
                                 </li>
                             }
 
-                            @* Listener/viewer should always see the main browsing link *@
+                            @* 5. The "Privacy" link, if you want to keep it accessible only to logged-in users, otherwise move it outside this block. *@
                             <li class="nav-item">
-                                <a class="nav-link text-dark" asp-controller="ListenerViewer" asp-action="Dashboard">Browse Episodes</a>
+                                <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
                             </li>
                         }
-                        @* --- END ROLE-SPECIFIC NAVIGATION --- *@
+                        else
+                        {
+                            @* If you still want the Privacy link for logged out users, you can place it here or with the public links. *@
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+                            </li>
+                        }
                     </ul>
                     <partial name="_LoginPartial" />
                 </div>

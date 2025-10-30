@@ -21,10 +21,10 @@ namespace PodcastManagementSystem.Services
             _bucketName = configuration["AWS:S3BucketName"];
         }
 
-        public async Task<string> UploadFileAsync(IFormFile file, int episodeId)
+        public async Task<string> UploadFileAsync(IFormFile file, string fileKey)
         {
-            // 1. Define the unique key (e.g., episode-1/filename.mp3)
-            var key = $"episodes/episode-{episodeId}/{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
+            
+            var key = fileKey;
 
             var request = new PutObjectRequest
             {

@@ -39,6 +39,7 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
 {
     options.SignIn.RequireConfirmedAccount = false;// set to false on Purpose by Tomislav. This otherwise we must set up email AND phone verification (WAAAAAY out of scope of this project.)
 })
+.AddRoles<IdentityRole<Guid>>()
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultUI() // Keep this here to register the Identity Pages
 .AddDefaultTokenProviders();
@@ -139,15 +140,6 @@ app.Run();
 
 
 
-
-
-
-
-
-
-
-
-
 //static async Task CreateRolesAsync(WebApplication app)
 //{
 //    using var scope = app.Services.CreateScope();
@@ -167,15 +159,15 @@ app.Run();
 
 async Task SeedRolesCreatedAsync(IServiceProvider services)
 {
-    using var scope = services.CreateScope();
+    using var scope = services.CreateScope();       
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
-
     string[] roles = { "Admin", "Podcaster", "ListenerViewer" };
-
     foreach (var role in roles)
     {
+        
         if (!await roleManager.RoleExistsAsync(role))
         {
+           
             await roleManager.CreateAsync(new IdentityRole<Guid>(role));
         }
     }

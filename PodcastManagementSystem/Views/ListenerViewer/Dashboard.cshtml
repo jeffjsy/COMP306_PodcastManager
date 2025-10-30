@@ -1,0 +1,48 @@
+﻿@model List<PodcastManagementSystem.Models.Podcast>
+
+@{
+    ViewData["Title"] = "Discover Podcasts";
+}
+
+<h2 class="text-secondary mt-4 mb-4">🌎 Discover All Podcasts</h2>
+<hr />
+
+@if (Model == null || !Model.Any())
+{
+    <div class="alert alert-warning" role="alert">
+        It looks like there are no podcasts available yet! Check back later.
+    </div>
+}
+else
+{
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+        @foreach (var podcast in Model)
+        {
+            <div class="col">
+                <div class="card h-100 shadow-sm">
+                    @* You would typically display a podcast image/cover art here *@
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title text-truncate">@podcast.Title</h5>
+                        <h6 class="card-subtitle mb-2 text-muted">Launched: @podcast.CreatedDate.ToShortDateString()</h6>
+
+                        @* Assuming you have a CreatorName property or can retrieve it easily *@
+                        @* <p class="small text-muted">By: @podcast.CreatorName</p> *@
+
+                        <p class="card-text flex-grow-1 overflow-hidden" style="max-height: 4.5em;">@podcast.Description</p>
+
+                        <div class="mt-auto pt-2 border-top">
+
+                            @* Action: Link to view the specific podcast channel and all its episodes *@
+                            <a asp-controller="ListenerViewer"
+                               asp-action="ViewChannel"
+                               asp-route-podcastId="@podcast.PodcastID"
+                               class="btn btn-sm btn-outline-secondary w-100">
+                                View Channel
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}

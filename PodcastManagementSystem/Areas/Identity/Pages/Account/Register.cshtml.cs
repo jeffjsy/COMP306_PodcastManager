@@ -1,4 +1,4 @@
-// Licensed to the .NET Foundation under one or more agreements.
+﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 #nullable disable
 
@@ -26,18 +26,20 @@ namespace PodcastManagementSystem.Areas.Identity.Pages.Account
     {
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly UserManager<ApplicationUser> _userManager;
-        private readonly RoleManager<ApplicationUser> _roleManager;
         private readonly IUserStore<ApplicationUser> _userStore;
+        private readonly RoleManager<IdentityRole<Guid>> _roleManager;
         private readonly IUserEmailStore<ApplicationUser> _emailStore;
         private readonly ILogger<RegisterModel> _logger;
         private readonly IEmailSender _emailSender;
+
 
         public RegisterModel(
             UserManager<ApplicationUser> userManager,
             IUserStore<ApplicationUser> userStore,
             SignInManager<ApplicationUser> signInManager,
             ILogger<RegisterModel> logger,
-            IEmailSender emailSender)
+            IEmailSender emailSender,
+            RoleManager<IdentityRole<Guid>> roleManager)
         {
             _userManager = userManager;
             _userStore = userStore;
@@ -45,6 +47,7 @@ namespace PodcastManagementSystem.Areas.Identity.Pages.Account
             _signInManager = signInManager;
             _logger = logger;
             _emailSender = emailSender;
+            _roleManager = roleManager;
         }
 
         /// <summary>
@@ -99,6 +102,10 @@ namespace PodcastManagementSystem.Areas.Identity.Pages.Account
             [Display(Name = "Confirm password")]
             [Compare("Password", ErrorMessage = "The password and confirmation password do not match.")]
             public string ConfirmPassword { get; set; }
+
+            [Required]
+            [Display(Name = "Account Role")]
+            public string Role { get; set; }
         }
 
 
@@ -120,8 +127,20 @@ namespace PodcastManagementSystem.Areas.Identity.Pages.Account
                 await _userStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
                 await _emailStore.SetEmailAsync(user, Input.Email, CancellationToken.None);
 
-                // Assign the default enum role for new users
-                user.Role = UserRole.ListenerViewer;
+                // 1. Get the chosen role (e.g., "Podcaster" or "ListenerViewer") from the Input model.
+                var selectedRoleString = Input.Role;
+
+                // 2. Assign the UserRole enum property on the ApplicationUser
+                if (Enum.TryParse(selectedRoleString, out UserRole selectedRoleEnum))
+                {
+                    user.Role = selectedRoleEnum;
+                }
+                else
+                {
+                    // 🎯 FIX: Use the correct enum member 'ListenerViewer' for fallback.
+                    user.Role = UserRole.ListenerViewer;
+                    selectedRoleString = "ListenerViewer";
+                }
 
                 // Create user in database
                 var result = await _userManager.CreateAsync(user, Input.Password);
@@ -130,25 +149,22 @@ namespace PodcastManagementSystem.Areas.Identity.Pages.Account
                 {
                     _logger.LogInformation("User created a new account with password.");
 
-                    // Sync with ASP.NET Identity role system
-                    var defaultRoleName = user.Role.ToString(); // "ListenerViewer"
-                    if (!await _userManager.IsInRoleAsync(user, defaultRoleName))
+                    // 3. Sync with ASP.NET Identity role system
+                    var roleExists = await _roleManager.RoleExistsAsync(selectedRoleString);
+
+                    if (roleExists)
                     {
-                        if (!await _userManager.IsInRoleAsync(user, defaultRoleName))
-                        {
-                            var roleExists = await _roleManager.RoleExistsAsync(defaultRoleName);
-                            if (roleExists)
-                            {
-                                // This step is where aspNetUserRoles table is populated/ added to
-                                await _userManager.AddToRoleAsync(user, defaultRoleName);
-                            }
-                            else
-                            {
-                                _logger.LogWarning($"Role {defaultRoleName} does not exist!");
-                            }
-                        }
+                        await _userManager.AddToRoleAsync(user, selectedRoleString);
                     }
-                    // Email confirmation link (optional)
+                    else
+                    {
+                        // Log and assign the safe default role in case the chosen role doesn't exist in the DB
+                        _logger.LogWarning($"The chosen role '{selectedRoleString}' does not exist! Assigning ListenerViewer.");
+                        await _userManager.AddToRoleAsync(user, "ListenerViewer");
+                    }
+
+                    // --- Email confirmation and Sign-In ---
+
                     var userId = await _userManager.GetUserIdAsync(user);
                     var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
                     code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));

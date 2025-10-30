@@ -20,6 +20,23 @@ namespace PodcastManagementSystem.Interfaces
         Task IncrementPlayCountAsync(int episodeId);
         Task<bool> AddSubscriptionAsync(Guid userId, int podcastId);
         Task<bool> IsSubscribedAsync(Guid userId, int podcastId);
+
+
+        // --- 4. PODCASTER/CREATOR MANAGEMENT ---
+        // Retrieve all podcasts owned by a specific creator
+        Task<List<Podcast>> GetPodcastsByCreatorIdAsync(Guid creatorId);
+
+        // CRUD operations for a Podcast (the channel)
+        Task AddPodcastAsync(Podcast podcast);
+        Task<Podcast> GetPodcastByIdAsync(int podcastId);
+        Task<IEnumerable<Episode>> GetEpisodesByPodcastIdAsync(int podcastId);
+
+        // CRUD operations for Episodes (the content)
+        Task AddEpisodeAsync(Episode episode);
+        Task UpdateEpisodeAsync(Episode episode); // For updating play count, title, etc.
+
+
+
     }
 }
 

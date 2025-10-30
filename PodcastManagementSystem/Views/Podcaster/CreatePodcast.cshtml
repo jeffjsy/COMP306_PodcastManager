@@ -1,0 +1,43 @@
+﻿@model PodcastManagementSystem.Models.ViewModels.PodcastViewModel
+
+@{
+    ViewData["Title"] = "Create New Podcast Channel";
+}
+
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+
+        <h2 class="text-primary mt-4 mb-4">🎙️ Create New Podcast Channel</h2>
+        <hr />
+
+        <form asp-action="CreatePodcast" method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="form-group mb-3">
+                <label asp-for="Title" class="control-label"></label>
+                <input asp-for="Title" class="form-control" placeholder="The Official Tech Podcast" />
+                <span asp-validation-for="Title" class="text-danger"></span>
+            </div>
+
+            <div class="form-group mb-4">
+                <label asp-for="Description" class="control-label"></label>
+                <textarea asp-for="Description" class="form-control" rows="4"
+                          placeholder="A brief description of your podcast (e.g., topics, format, release schedule)."></textarea>
+                <span asp-validation-for="Description" class="text-danger"></span>
+            </div>
+
+            @* We don't collect the CreatorID here; it's pulled from the logged-in user in the controller. *@
+
+            <div class="form-group">
+                <input type="submit" value="Launch Channel" class="btn btn-primary me-2" />
+                <a asp-action="Dashboard" class="btn btn-outline-secondary">Cancel and Go Back</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

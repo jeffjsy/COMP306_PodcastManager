@@ -1,158 +1,156 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
-using PodcastManagementSystem.Data;
+using PodcastManagementSystem.Interfaces;
 using PodcastManagementSystem.Models;
+using PodcastManagementSystem.Models.ViewModels;
 
 namespace PodcastManagementSystem.Controllers
 {
+    // 🛡️ SECURITY: Only users assigned the "Podcaster" role can access this controller.
+    [Authorize(Roles = "Podcaster")]
     public class PodcasterController : Controller
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IPodcastRepository _podcastRepository;
+        private readonly IS3Service _s3Service;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public PodcasterController(ApplicationDbContext context)
+        public PodcasterController(
+            IPodcastRepository podcastRepository,
+            IS3Service s3Service,
+            UserManager<ApplicationUser> userManager)
         {
-            _context = context;
+            _podcastRepository = podcastRepository;
+            _s3Service = s3Service;
+            _userManager = userManager;
         }
 
-        // GET: Podcaster
-        public async Task<IActionResult> Index()
-        {
-            return View(await _context.Users.ToListAsync());
-        }
+        // ---------------------------------------------------------------------
+        // 1. PODCAST DASHBOARD (READ)
+        // ---------------------------------------------------------------------
 
-        // GET: Podcaster/Details/5
-        public async Task<IActionResult> Details(Guid? id)
+        // GET: Podcaster/Dashboard - Lists all podcasts created by the current user
+        public async Task<IActionResult> Dashboard()
         {
-            if (id == null)
+            var userId = _userManager.GetUserId(User);
+            if (userId == null)
             {
-                return NotFound();
+                // Should not happen if Authorize attribute is working, but safe check.
+                return Unauthorized();
             }
 
-            var applicationUser = await _context.Users
-                .FirstOrDefaultAsync(m => m.Id == id);
-            if (applicationUser == null)
-            {
-                return NotFound();
-            }
+            var creatorIdGuid = Guid.Parse(userId);
 
-            return View(applicationUser);
+            // Retrieve podcasts using the new repository method
+            var myPodcasts = await _podcastRepository.GetPodcastsByCreatorIdAsync(creatorIdGuid);
+
+            return View(myPodcasts);
         }
 
-        // GET: Podcaster/Create
-        public IActionResult Create()
+        // ---------------------------------------------------------------------
+        // 2. CREATE PODCAST (CREATE)
+        // ---------------------------------------------------------------------
+
+        // GET: Podcaster/CreatePodcast
+        public IActionResult CreatePodcast()
         {
-            return View();
+            // Returning an empty ViewModel for the form
+            return View(new PodcastViewModel());
         }
 
-        // POST: Podcaster/Create
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
+        // POST: Podcaster/CreatePodcast
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Role,Id,UserName,NormalizedUserName,Email,NormalizedEmail,EmailConfirmed,PasswordHash,SecurityStamp,ConcurrencyStamp,PhoneNumber,PhoneNumberConfirmed,TwoFactorEnabled,LockoutEnd,LockoutEnabled,AccessFailedCount")] ApplicationUser applicationUser)
+        public async Task<IActionResult> CreatePodcast(PodcastViewModel model)
         {
-            if (ModelState.IsValid)
+            if (!ModelState.IsValid)
             {
-                applicationUser.Id = Guid.NewGuid();
-                _context.Add(applicationUser);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
+                return View(model);
             }
-            return View(applicationUser);
+
+            var userId = _userManager.GetUserId(User);
+            if (userId == null) return Unauthorized();
+
+            // Map ViewModel to the domain model
+            var podcast = new Podcast
+            {
+                Title = model.Title,
+                Description = model.Description,
+                CreatorID = Guid.Parse(userId),
+                CreatedDate = DateTime.UtcNow
+            };
+
+            await _podcastRepository.AddPodcastAsync(podcast);
+
+            // Redirect to the new podcast's episode list, or back to the dashboard
+            return RedirectToAction(nameof(Dashboard));
         }
 
-        // GET: Podcaster/Edit/5
-        public async Task<IActionResult> Edit(Guid? id)
+        // ---------------------------------------------------------------------
+        // 3. EPISODE MANAGEMENT (UPLOAD)
+        // ---------------------------------------------------------------------
+
+        // GET: Podcaster/AddEpisode/{podcastId}
+        public async Task<IActionResult> AddEpisode(int podcastId)
         {
-            if (id == null)
+            var podcast = await _podcastRepository.GetPodcastByIdAsync(podcastId);
+
+            if (podcast == null || podcast.CreatorID != Guid.Parse(_userManager.GetUserId(User)))
             {
-                return NotFound();
+                return NotFound(); // Podcast not found or not owned by current user
             }
 
-            var applicationUser = await _context.Users.FindAsync(id);
-            if (applicationUser == null)
-            {
-                return NotFound();
-            }
-            return View(applicationUser);
+            // You would pass an EpisodeViewModel to the View here
+            var viewModel = new EpisodeViewModel { PodcastID = podcastId };
+            return View(viewModel);
         }
 
-        // POST: Podcaster/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
+        // POST: Podcaster/AddEpisode
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(Guid id, [Bind("Role,Id,UserName,NormalizedUserName,Email,NormalizedEmail,EmailConfirmed,PasswordHash,SecurityStamp,ConcurrencyStamp,PhoneNumber,PhoneNumberConfirmed,TwoFactorEnabled,LockoutEnd,LockoutEnabled,AccessFailedCount")] ApplicationUser applicationUser)
+        public async Task<IActionResult> AddEpisode(EpisodeViewModel model)
         {
-            if (id != applicationUser.Id)
+            if (!ModelState.IsValid || model.AudioFile == null)
             {
-                return NotFound();
+                return View(model);
             }
 
-            if (ModelState.IsValid)
+            // 1. Upload the file to S3
+            // The file name should be unique, e.g., using a Guid
+            var fileKey = $"episodes/{model.PodcastID}/{Guid.NewGuid()}-{model.AudioFile.FileName}";
+            var audioFileUrl = await _s3Service.UploadFileAsync(model.AudioFile, fileKey);
+
+            if (string.IsNullOrEmpty(audioFileUrl))
             {
-                try
-                {
-                    _context.Update(applicationUser);
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!ApplicationUserExists(applicationUser.Id))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
-                return RedirectToAction(nameof(Index));
+                ModelState.AddModelError("", "Error uploading file to S3 storage.");
+                return View(model);
             }
-            return View(applicationUser);
+
+            // 2. Save metadata to the database
+            var episode = new Episode
+            {
+                PodcastID = model.PodcastID,
+                Title = model.Title,
+                ReleaseDate = DateTime.UtcNow,
+                AudioFileURL = audioFileUrl,
+                // You may calculate DurationMinutes here if needed, or rely on user input
+                DurationMinutes = model.DurationMinutes
+            };
+
+            await _podcastRepository.AddEpisodeAsync(episode);
+
+            // 3. Redirect to the episode listing
+            return RedirectToAction(nameof(Dashboard));
         }
 
-        // GET: Podcaster/Delete/5
-        public async Task<IActionResult> Delete(Guid? id)
-        {
-            if (id == null)
-            {
-                return NotFound();
-            }
+        // ---------------------------------------------------------------------
+        // 4. CLEANUP (PLACEHOLDER)
+        // ---------------------------------------------------------------------
 
-            var applicationUser = await _context.Users
-                .FirstOrDefaultAsync(m => m.Id == id);
-            if (applicationUser == null)
-            {
-                return NotFound();
-            }
+        // You would typically include Edit/Delete actions for Podcasts and Episodes here.
 
-            return View(applicationUser);
-        }
-
-        // POST: Podcaster/Delete/5
-        [HttpPost, ActionName("Delete")]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(Guid id)
-        {
-            var applicationUser = await _context.Users.FindAsync(id);
-            if (applicationUser != null)
-            {
-                _context.Users.Remove(applicationUser);
-            }
-
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
-        }
-
-        private bool ApplicationUserExists(Guid id)
-        {
-            return _context.Users.Any(e => e.Id == id);
-        }
     }
 }

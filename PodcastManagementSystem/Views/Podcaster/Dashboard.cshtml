@@ -41,23 +41,56 @@ else
                         <h6 class="card-subtitle mb-2 text-muted">Launched: @podcast.CreatedDate.ToShortDateString()</h6>
                         <p class="card-text flex-grow-1 overflow-hidden" style="max-height: 4.5em;">@podcast.Description</p>
 
-                        <div class="mt-auto pt-2 border-top">
+                        <div class="mt-auto pt-2 border-top container">
+                            <div class="row">
+                                <div class="col-9">
+                                    <a asp-controller="Podcaster"
+                                       asp-action="ManagePodcast"
+                                       asp-route-podcastId="@podcast.PodcastID"
+                                       class="btn btn-sm btn-info mb-2 w-100">
+                                        View & Manage
+                                    </a>
+                                    <div style="background-color: green">
+                                        <a asp-controller="Podcaster"
+                                           asp-action="AddEpisode"
+                                           asp-route-podcastId="@podcast.PodcastID"
+                                           class="btn btn-sm btn-primary w-100">
+                                            <i class="bi bi-upload"></i> Add New Episode
+                                        </a>
+                                    </div>
+                                </div>
 
+                                @* <div class="col-2">
+                                    <div class="d-flex justify-content-center align-items-center" style="background-color: blue">
+                                        <button type="button" class="btn btn-danger">Danger</button>
+                                    </div>
+                                </div> *@
+                                @* <div class="col-2">
+                                    <div class="d-flex justify-content-center align-items-center" style="100px">
+                                        <button type="button" class="btn btn-danger btn-sm flex-fill">Delete Podcast</button>
+                                    </div>
+                                </div> *@
+                                <div class="col-3 d-flex justify-content-center align-items-center">
+                                    <button type="button" class="btn btn-danger btn-sm w-100" style="min-width: 70px;">Delete Podcast</button>
+                                </div>
+
+
+                            </div>
                             @* Action: View Episodes & Stats *@
-                            <a asp-controller="Podcaster"
+                            @* <a asp-controller="Podcaster"
                                asp-action="ManagePodcast"
                                asp-route-podcastId="@podcast.PodcastID"
                                class="btn btn-sm btn-info mb-2 w-100">
                                 View & Manage
-                            </a>
+                            </a> *@
 
                             @* Action: Add New Episode *@
-                            <a asp-controller="Podcaster"
+                            @* <a asp-controller="Podcaster"
                                asp-action="AddEpisode"
                                asp-route-podcastId="@podcast.PodcastID"
                                class="btn btn-sm btn-primary w-100">
                                 <i class="bi bi-upload"></i> Add New Episode
-                            </a>
+                            </a> *@
                         </div>
                     </div>
                 </div>

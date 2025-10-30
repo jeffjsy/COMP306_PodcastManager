@@ -1,46 +1,46 @@
-﻿@model PodcastManagementSystem.Models.ViewModels.EpisodeViewModel
+﻿@model PodcastManagementSystem.Models.ViewModels.AddEpisodeViewModel
 
 @{
     ViewData["Title"] = "Add New Episode";
 }
 
+<div class="mt-4">
+    <h1>Publish New Episode</h1>
+    <h3 class="text-secondary">For: @ViewData["PodcastTitle"]</h3>
+    <hr />
+</div>
+
 <div class="row">
-    <div class="col-md-8 offset-md-2">
+    <div class="col-md-8">
+        <form asp-action="AddEpisode" enctype="multipart/form-data">
 
-        <h2 class="text-primary mt-4 mb-3">💿 Upload New Episode</h2>
-        <hr />
+            <div asp-validation-summary="All" class="text-danger"></div> <input type="hidden" asp-for="PodcastID" />
 
-        @* IMPORTANT: enctype="multipart/form-data" is required for file uploads!
-        We also use the Post method on the AddEpisode action.
-        *@
-        <form asp-action="AddEpisode" method="post" enctype="multipart/form-data">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-
-            @* Hidden field to pass the PodcastID back to the controller *@
-            <input type="hidden" asp-for="PodcastID" />
-
-            <div class="form-group mb-3">
-                <label asp-for="Title" class="control-label"></label>
-                <input asp-for="Title" class="form-control" placeholder="Episode Title (e.g., S01E05 - The Future of AI)" />
+            <div class="mb-3">
+                <label asp-for="Title" class="form-label"></label>
+                <input asp-for="Title" class="form-control" placeholder="The Inaugural Broadcast" />
                 <span asp-validation-for="Title" class="text-danger"></span>
             </div>
 
-            <div class="form-group mb-3">
-                <label asp-for="DurationMinutes" class="control-label"></label>
-                <input asp-for="DurationMinutes" type="number" class="form-control" placeholder="Duration in minutes (e.g., 35)" />
-                <span asp-validation-for="DurationMinutes" class="text-danger"></span>
+            <div class="mb-3">
+                <label asp-for="Description" class="form-label"></label>
+                <textarea asp-for="Description" class="form-control" rows="4"></textarea>
+                <span asp-validation-for="Description" class="text-danger"></span>
             </div>
 
-            <div class="form-group mb-4">
-                <label asp-for="AudioFile" class="control-label"></label>
-                <input asp-for="AudioFile" type="file" class="form-control" accept="audio/*" />
-                <div class="form-text">Accepted formats: MP3, WAV, M4A, etc. Max file size: 100MB (limit depends on server configuration).</div>
+            <div class="mb-3">
+                <label asp-for="AudioFile" class="form-label"></label>
+                <input asp-for="AudioFile" type="file" accept=".mp3,.wav,.m4a" class="form-control" />
                 <span asp-validation-for="AudioFile" class="text-danger"></span>
             </div>
 
-            <div class="form-group">
-                <input type="submit" value="Upload Episode" class="btn btn-primary me-2" />
-                <a asp-action="Dashboard" class="btn btn-outline-secondary">Back to Dashboard</a>
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary me-2">
+                    <i class="bi bi-upload"></i> Publish Episode
+                </button>
+                <a asp-action="ManagePodcast" asp-route-podcastId="@Model.PodcastID" class="btn btn-outline-secondary">
+                    Cancel
+                </a>
             </div>
         </form>
     </div>

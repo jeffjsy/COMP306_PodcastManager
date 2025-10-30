@@ -1,0 +1,77 @@
+﻿@model PodcastManagementSystem.Models.ViewModels.ChannelDetailsViewModel
+
+@{
+    ViewData["Title"] = $"Manage: {Model.Channel.Title}";
+}
+
+<div class="d-flex justify-content-between align-items-center mt-4 mb-4">
+    <h1>🎙️ Manage Channel: @Model.Channel.Title</h1>
+    <div>
+        <a asp-action="Dashboard" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+</div>
+
+<hr />
+
+@* --- Channel Details Summary --- *@
+<div class="card p-3 mb-4 shadow-sm">
+    <div class="row">
+        <div class="col-md-9">
+            <h5>Description</h5>
+            <p>@Model.Channel.Description</p>
+            <p class="text-muted">Launched: @Model.Channel.CreatedDate.ToShortDateString()</p>
+        </div>
+        <div class="col-md-3 text-end">
+            @* Link to edit the CHANNEL details itself *@
+            <a asp-action="EditPodcast" asp-route-podcastId="@Model.Channel.PodcastID" class="btn btn-sm btn-info w-100 mb-2">
+                Edit Channel Info
+            </a>
+            @* Link to add a NEW episode to this channel *@
+            <a asp-action="AddEpisode" asp-route-podcastId="@Model.Channel.PodcastID" class="btn btn-sm btn-primary w-100">
+                + Add New Episode
+            </a>
+        </div>
+    </div>
+</div>
+
+@* --- Episodes Management Table --- *@
+<h3>Episodes (@Model.Episodes.Count)</h3>
+
+@if (Model.Episodes == null || !Model.Episodes.Any())
+{
+    <div class="alert alert-info mt-3">
+        No episodes published yet. Use the "Add New Episode" button above to get started!
+    </div>
+}
+else
+{
+    <table class="table table-striped table-hover mt-3">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Release Date</th>
+                <th>Duration (min)</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var episode in Model.Episodes)
+            {
+                <tr>
+                    <td>@episode.Title</td>
+                    <td>@episode.ReleaseDate.ToShortDateString()</td>
+                    <td>@episode.DurationMinutes</td>
+                    <td>
+                        @* Action to edit this specific episode *@
+                        <a asp-action="EditEpisode" asp-route-episodeId="@episode.PodcastID" class="btn btn-sm btn-warning">Edit</a>
+
+                        @* Action to delete this specific episode *@
+                        <a asp-action="DeleteEpisode" asp-route-episodeId="@episode.PodcastID" class="btn btn-sm btn-danger ms-2">Delete</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

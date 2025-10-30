@@ -30,7 +30,8 @@ namespace PodcastManagementSystem.Services
             {
                 BucketName = _bucketName,
                 Key = key,
-                ContentType = file.ContentType
+                ContentType = file.ContentType,
+                CannedACL = S3CannedACL.PublicRead
             };
 
             // 2. Stream the file content

@@ -27,12 +27,23 @@
                 <label asp-for="Input.ConfirmPassword">Confirm Password</label>
                 <span asp-validation-for="Input.ConfirmPassword" class="text-danger"></span>
             </div>
+            @*
             <div class="form-group">
                 <label asp-for="Input.Role"></label>
                 <select asp-for="Input.Role" class="form-control">
                     <option value="Listener">Listener</option>
                     <option value="Podcaster">Podcaster</option>
-                    @* <option value="Admin">Admin</option> *@
+                    <option value="Admin">Admin</option>
+                </select>
+                <span asp-validation-for="Input.Role" class="text-danger"></span>
+            </div>
+            *@
+
+            <div class="form-group mb-3">
+                <select asp-for="Input.Role" class="form-control">
+                    <option value="" disabled selected>Select a role</option>
+                    <option value="Listener">Listener</option>
+                    <option value="Podcaster">Podcaster</option>
                 </select>
                 <span asp-validation-for="Input.Role" class="text-danger"></span>
             </div>

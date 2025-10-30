@@ -19,7 +19,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h3>My Channels (@Model.Count)</h3>
     <a asp-controller="Podcaster" asp-action="CreatePodcast" class="btn btn-success">
-        <i class="bi bi-plus-circle"></i> Launch New Podcast
+        <i class="bi bi-plus-circle"></i> Create New Podcast
     </a>
 </div>
 
@@ -70,8 +70,24 @@ else
                                         <button type="button" class="btn btn-danger btn-sm flex-fill">Delete Podcast</button>
                                     </div>
                                 </div> *@
+                                @* <div class="col-3 d-flex justify-content-center align-items-center">
+                                    <button type="button" class="btn btn-danger btn-sm w-100" style="min-width: 70px;"
+                                            asp-controller="Podcaster"
+                                            asp-action="Delete"
+                                            asp-route-podcastId="@podcast.PodcastID">
+                                        Delete Podcast
+                                    </button>
+                                </div> *@
+
                                 <div class="col-3 d-flex justify-content-center align-items-center">
-                                    <button type="button" class="btn btn-danger btn-sm w-100" style="min-width: 70px;">Delete Podcast</button>
+                                    <a asp-controller="Podcaster"
+                                       asp-action="Delete"
+                                       asp-route-podcastId="@podcast.PodcastID"
+                                       class="btn btn-danger btn-sm w-100"
+                                       style="min-width: 70px;">
+                                        Delete Podcast
+                                    </a>
+
                                 </div>
 
 

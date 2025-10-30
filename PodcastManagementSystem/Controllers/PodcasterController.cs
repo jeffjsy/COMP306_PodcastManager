@@ -150,7 +150,48 @@ namespace PodcastManagementSystem.Controllers
         // 4. CLEANUP (PLACEHOLDER)
         // ---------------------------------------------------------------------
 
-        // You would typically include Edit/Delete actions for Podcasts and Episodes here.
+        // Here is where Edit/Delete actions for Podcasts and Episodes here.
+
+        // ---------------------------------------------------------------------
+        // 5. DELETE PODCAST
+        // ---------------------------------------------------------------------
+
+        // GET: Podcaster/Delete/{podcastId}
+        // Loads deletaion confirmation page
+        public async Task<IActionResult> Delete(int podcastId)
+        {
+            var podcast = await _podcastRepository.GetPodcastByIdAsync(podcastId);
+
+            if (podcast == null)
+            {
+                return NotFound();
+            }
+
+            // Only allow the creator to delete their own podcast
+            var currentUserId = Guid.Parse(_userManager.GetUserId(User));
+            if (podcast.CreatorID != currentUserId)
+            {
+                return Forbid();
+            }
+
+            return View(podcast); // Passes the podcast to Delete.cshtml
+        }
+
+
+        // POST: Podcaster/DeleteConfirmed/{podcastId}
+        // ➜ Actually deletes the podcast
+        [HttpPost, ActionName("DeleteConfirmed")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteConfirmed(int podcastId)
+        {
+            var podcast = await _podcastRepository.GetPodcastByIdAsync(podcastId);
+            if (podcast == null || podcast.CreatorID != Guid.Parse(_userManager.GetUserId(User)))
+                return NotFound();
+
+            await _podcastRepository.DeletePodcastAsync(podcastId);
+
+            return RedirectToAction(nameof(Dashboard));
+        }
 
     }
 }

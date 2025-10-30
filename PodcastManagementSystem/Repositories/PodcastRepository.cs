@@ -103,6 +103,7 @@ namespace PodcastManagementSystem.Repositories
         // --- 4. Podcaster/Creator Management ---
         // ---------------------------------------------------------------------
 
+        /// Podcast CRUD
         public async Task<List<Podcast>> GetPodcastsByCreatorIdAsync(Guid creatorId)
         {
             // Fetches all podcasts where the CreatorID matches the provided GUID
@@ -123,6 +124,28 @@ namespace PodcastManagementSystem.Repositories
             // Fetches a single podcast by its primary key
             return await _context.Podcasts.FindAsync(podcastId);
         }
+
+        public async Task DeletePodcastAsync(int podcastId)
+        {
+            // Find the podcast by ID
+            var podcast = await _context.Podcasts.FindAsync(podcastId);
+
+            if (podcast == null)
+                return; // Nothing to delete
+
+            // Optional: If you also store episodes, delete them first
+            var episodes = _context.Episodes.Where(e => e.PodcastID == podcastId);
+            _context.Episodes.RemoveRange(episodes);
+
+            // Remove the podcast
+            _context.Podcasts.Remove(podcast);
+
+            // Commit changes to the database
+            await _context.SaveChangesAsync();
+        }
+
+
+        /// Episode CRUD
 
         public async Task AddEpisodeAsync(Episode episode)
         {

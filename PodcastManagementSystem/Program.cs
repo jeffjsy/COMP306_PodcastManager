@@ -79,38 +79,9 @@ builder.Services.AddScoped<IS3Service, S3Service>();
 builder.Services.AddScoped<IParameterStoreService, ParameterStoreService>(); 
 // ----------------------------------------------------
 
-
 var app = builder.Build();
 
-// Adding roles 
-//using (var scope = app.Services.CreateScope())
-//{
-//    var serviceProvider = scope.ServiceProvider;
-//    var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole>>();
-
-//    // Required roles: Podcaster, Listener/viewer, Admin
-//    string[] roleNames = { "Admin", "Podcaster", "Listener/viewer" };
-
-//    foreach (var roleName in roleNames)
-//    {
-//        // Check if the role already exists asynchronously
-//        if (!roleManager.RoleExistsAsync(roleName).GetAwaiter().GetResult())
-//        {
-//            // If the role doesn't exist, create it
-//            roleManager.CreateAsync(new IdentityRole(roleName)).GetAwaiter().GetResult();
-//        }
-//    }
-//}
-
-using (var scope = app.Services.CreateScope())
-{
-    //seeds User Roles onto db on every run of app (To ensure db has Roles)
-    await SeedRolesCreatedAsync(scope.ServiceProvider);
-    //seeds Users onto db on every run of app (To ensure db has Users)
-    await SeedTestListenerViewerUserAsync(scope.ServiceProvider);
-    await SeedTestPodcasterUserAsync(scope.ServiceProvider);
-    await SeedTestAdminUserAsync(scope.ServiceProvider);
-}
+await SeedDbWithEntities();
 
 
 // Configure the HTTP request pipeline.
@@ -140,22 +111,30 @@ app.Run();
 
 
 
-//static async Task CreateRolesAsync(WebApplication app)
-//{
-//    using var scope = app.Services.CreateScope();
-//    var serviceProvider = scope.ServiceProvider;
-//    var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
 
-//    string[] roleNames = { "Admin", "Podcaster", "Listener/viewer" };
 
-//    foreach (var roleName in roleNames)
-//    {
-//        if (!await roleManager.RoleExistsAsync(roleName))
-//        {
-//            await roleManager.CreateAsync(new IdentityRole<Guid>(roleName));
-//        }
-//    }
-//}
+
+
+/////////////////////////////////////////////
+///
+//SEEDING DB Methods
+
+
+async Task SeedDbWithEntities() {
+    using (var scope = app.Services.CreateScope())
+    {
+        //seeds User Roles onto db on every run of app (To ensure db has Roles)
+        await SeedRolesCreatedAsync(scope.ServiceProvider);
+        //seeds Users onto db on every run of app (To ensure db has Users)
+        //await SeedTestListenerViewerUserAsync(scope.ServiceProvider);
+        //await SeedTestPodcasterUserAsync(scope.ServiceProvider);
+        //await SeedTestAdminUserAsync(scope.ServiceProvider);
+        await SeedUsers(scope.ServiceProvider);
+        await SeedPodcasts(scope.ServiceProvider);
+
+    }
+}
+
 
 async Task SeedRolesCreatedAsync(IServiceProvider services)
 {
@@ -171,6 +150,12 @@ async Task SeedRolesCreatedAsync(IServiceProvider services)
             await roleManager.CreateAsync(new IdentityRole<Guid>(role));
         }
     }
+}
+
+async Task SeedUsers(IServiceProvider services) {
+    await SeedTestListenerViewerUserAsync(services);
+    await SeedTestPodcasterUserAsync(services);
+    await SeedTestAdminUserAsync(services);
 }
 
 async Task SeedTestListenerViewerUserAsync(IServiceProvider services)
@@ -234,5 +219,52 @@ async Task SeedTestAdminUserAsync(IServiceProvider services)
         await userManager.CreateAsync(user, "Test123!");
         await userManager.AddToRoleAsync(user, user.Role.ToString());
     }
+}
+
+async Task SeedPodcasts(IServiceProvider services) {
+
+    using var scope = services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
+
+    // If the DB already has podcasts, skip seeding
+    if (dbContext.Podcasts.Any())
+    {
+        return;
+    }
+
+    var podcaster = await userManager.FindByEmailAsync("podcaster@example.com");
+
+    var podcasts = new List<Podcast>
+        {
+            new Podcast
+            {
+                Title = "Tech Talks Daily",
+                Description = "Your daily dose of tech insights.",
+                CreatorID = podcaster.Id,
+                //CreatorID = Guid.NewGuid(),
+                CreatedDate = DateTime.UtcNow
+            },
+            new Podcast
+            {
+                Title = "History Revisited",
+                Description = "Exploring untold stories from the past.",
+                CreatorID = podcaster.Id,
+                //CreatorID = Guid.NewGuid(),
+                CreatedDate = DateTime.UtcNow
+            },
+            new Podcast
+            {
+                Title = "Mindful Moments",
+                Description = "Meditation and mindfulness tips for everyday life.",
+                CreatorID = podcaster.Id,
+                //CreatorID = Guid.NewGuid(),
+                CreatedDate = DateTime.UtcNow
+            }
+        };
+
+    dbContext.Podcasts.AddRange(podcasts);
+    dbContext.SaveChanges();
 }
 

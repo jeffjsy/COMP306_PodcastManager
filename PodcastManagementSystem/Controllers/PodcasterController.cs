@@ -277,7 +277,7 @@ namespace PodcastManagementSystem.Controllers
         }
 
             // 4. Redirect back to the episode management view
-            return RedirectToAction(nameof(ManagePodcast), new { podcastId = podcastId });
-        }
+        //    return RedirectToAction(nameof(ManagePodcast), new { podcastId = podcastId });
+        //}
     }
 }

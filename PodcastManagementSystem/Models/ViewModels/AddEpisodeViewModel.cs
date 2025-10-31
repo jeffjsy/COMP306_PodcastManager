@@ -15,8 +15,8 @@ namespace PodcastManagementSystem.Models.ViewModels
         [StringLength(100)]
         public string Title { get; set; }
 
-        [Required]
-        [DataType(DataType.MultilineText)]
+        [Required(ErrorMessage = "A Description is required for the episode.")]
+        [StringLength(5000, ErrorMessage = "Description cannot exceed 5000 characters.")]
         public string Description { get; set; }
 
         [Display(Name = "Duration (Minutes)")]

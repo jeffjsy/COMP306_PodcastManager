@@ -65,10 +65,14 @@ else
                     <td>@episode.DurationMinutes</td>
                     <td>
                         @* Action to edit this specific episode *@
-                        <a asp-action="EditEpisode" asp-route-episodeId="@episode.PodcastID" class="btn btn-sm btn-warning">Edit</a>
+                        <a asp-action="EditEpisode"
+                           asp-route-id="@episode.EpisodeID"
+                           class="btn btn-sm btn-info">Edit</a>
 
                         @* Action to delete this specific episode *@
-                        <a asp-action="DeleteEpisode" asp-route-episodeId="@episode.PodcastID" class="btn btn-sm btn-danger ms-2">Delete</a>
+                        <a asp-action="DeleteEpisode"
+                           asp-route-id="@episode.EpisodeID"
+                           class="btn btn-sm btn-danger ms-2">Delete</a>
                     </td>
                 </tr>
             }

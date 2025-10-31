@@ -12,8 +12,8 @@ using PodcastManagementSystem.Data;
 namespace PodcastManagementSystem.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20251030000048_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20251031044605_MadeEpisodeDescriptionRequired")]
+    partial class MadeEpisodeDescriptionRequired
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -236,6 +236,10 @@ namespace PodcastManagementSystem.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("EpisodeID"));
 
                     b.Property<string>("AudioFileURL")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 

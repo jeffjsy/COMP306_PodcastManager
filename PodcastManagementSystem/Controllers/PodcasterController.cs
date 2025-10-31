@@ -89,6 +89,7 @@ namespace PodcastManagementSystem.Controllers
                 CreatedDate = DateTime.UtcNow
             };
 
+
             await _podcastRepository.AddPodcastAsync(podcast);
 
             return RedirectToAction(nameof(Dashboard));
@@ -145,8 +146,9 @@ namespace PodcastManagementSystem.Controllers
                 return NotFound();
             }
 
+            // Note: AddEpisodeViewModel MUST include a [Required] Description property now.
             var viewModel = new AddEpisodeViewModel { PodcastID = podcastId };
-            ViewData["PodcastTitle"] = podcast.Title; 
+            ViewData["PodcastTitle"] = podcast.Title;
             return View(viewModel);
         }
 
@@ -156,7 +158,7 @@ namespace PodcastManagementSystem.Controllers
         [RequestSizeLimit(200_000_000)]
         public async Task<IActionResult> AddEpisode(AddEpisodeViewModel model)
         {
-            //  Check validation failure
+            
             if (!ModelState.IsValid || model.AudioFile == null)
             {
                 _logger.LogWarning("Episode upload failed validation for PodcastID: {PodcastId}. Errors: {@Errors}",
@@ -169,7 +171,6 @@ namespace PodcastManagementSystem.Controllers
                 return View(model);
             }
 
-            // 🌟 LOG POINT 2: Before S3 Upload
             _logger.LogInformation("Validation passed. Attempting S3 upload for episode '{Title}' on podcast {Id}.",
                 model.Title, model.PodcastID);
 
@@ -184,7 +185,6 @@ namespace PodcastManagementSystem.Controllers
             }
             catch (Exception ex)
             {
-                // 🛑 CRITICAL LOGGING: Logs the full exception details
                 _logger.LogError(ex, "S3 Upload FAILED for file key {Key}. Check AWS credentials and bucket configuration.", fileKey);
                 ModelState.AddModelError("", "S3 service error: Could not upload file. Check server logs for details.");
 
@@ -193,7 +193,6 @@ namespace PodcastManagementSystem.Controllers
                 return View(model);
             }
 
-            // 🌟 LOG POINT 3: Check S3 URL result
             if (string.IsNullOrEmpty(audioFileUrl))
             {
                 _logger.LogError("S3 service returned a NULL or empty URL for file key {Key}. Check S3 service return logic.", fileKey);
@@ -204,7 +203,6 @@ namespace PodcastManagementSystem.Controllers
                 return View(model);
             }
 
-            // 🌟 LOG POINT 4: Before Repository Save
             _logger.LogInformation("S3 upload successful (URL: {Url}). Saving episode metadata to database.", audioFileUrl);
 
 
@@ -213,10 +211,12 @@ namespace PodcastManagementSystem.Controllers
             {
                 PodcastID = model.PodcastID,
                 Title = model.Title,
+                Description = model.Description,
                 ReleaseDate = DateTime.UtcNow,
                 AudioFileURL = audioFileUrl,
                 DurationMinutes = model.DurationMinutes
             };
+
 
             // 3. Save the episode using the IEpisodeRepository
             await _episodeRepository.AddEpisodeAsync(episode);
@@ -230,10 +230,102 @@ namespace PodcastManagementSystem.Controllers
         }
 
         // ---------------------------------------------------------------------
+        // 3.5. UPDATE EPISODE  
+        // ---------------------------------------------------------------------
+
+        // POST: /Podcaster/EditEpisode
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditEpisode(Episode model)
+        {
+            if (!ModelState.IsValid)
+            {
+                // This will likely return to the GET EditEpisode view with errors
+                return View(model);
+            }
+
+            _logger.LogInformation("TRACE 1: Edit attempt received for Episode {ID}. New Title: {Title}", model.EpisodeID, model.Title);
+
+            // 1. Get the original episode object, which is currently tracked by the context.
+            var episodeToUpdate = await _episodeRepository.GetEpisodeByIdAsync(model.EpisodeID);
+            if (episodeToUpdate == null) return NotFound();
+
+            // 2. Update ONLY the editable properties (Title, Description, Duration, etc.)
+            episodeToUpdate.Title = model.Title;
+            episodeToUpdate.Description = model.Description;
+            episodeToUpdate.DurationMinutes = model.DurationMinutes;
+
+
+            try
+            {
+                _logger.LogInformation("TRACE 2: Calling repository to update Episode {ID}.", model.EpisodeID);
+                await _episodeRepository.UpdateEpisodeAsync(episodeToUpdate);
+
+
+                _logger.LogInformation("TRACE 3: Repository call completed successfully for Episode {ID}.", model.EpisodeID);
+                TempData["SuccessMessage"] = $"Episode '{episodeToUpdate.Title}' updated successfully.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "TRACE ABNORMAL: Saving failed for Episode {ID}.", model.EpisodeID);
+                ModelState.AddModelError("", "An error occurred while saving changes.");
+                return View(model);
+            }
+
+            _logger.LogInformation("TRACE 4: Redirecting to ManagePodcast for Episode {ID}.", model.EpisodeID);
+            // 3. Redirect back to the episode management page
+            return RedirectToAction(nameof(ManagePodcast), new { podcastId = episodeToUpdate.PodcastID });
+        }
+
+        public async Task<IActionResult> EditEpisode(int? id)
+        {
+            if (id == null) return NotFound();
+
+            // Fetch the episode from the repository
+            var episode = await _episodeRepository.GetEpisodeByIdAsync(id.Value);
+
+            if (episode == null) return NotFound();
+
+            return View(episode);
+        }
+
+
+        // ---------------------------------------------------------------------
         // 4. EPISODE DELETION (DELETE)
         // ---------------------------------------------------------------------
 
-        // Here is where Edit/Delete actions for Podcasts and Episodes here.
+        // GET: /Podcaster/DeleteEpisode/3 (Confirmation Page)
+        public async Task<IActionResult> DeleteEpisode(int? id)
+        {
+            if (id == null) return NotFound();
+
+            var episode = await _episodeRepository.GetEpisodeByIdAsync(id.Value);
+            if (episode == null)
+            {
+                // This is where you got the 404 before!
+                return NotFound();
+            }
+
+            return View(episode);
+        }
+
+        // POST: /Podcaster/DeleteEpisode/3 (Execution)
+        [HttpPost, ActionName("DeleteEpisode")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteEpisodeConfirmed(int id)
+        {
+            // Get Podcast ID BEFORE deleting the episode record!
+            int podcastId = await _episodeRepository.GetPodcastIdForEpisodeAsync(id);
+
+            await _episodeRepository.DeleteEpisodeAsync(id);
+
+            if (podcastId > 0)
+            {
+                // Redirect back to the managing page for the parent podcast
+                return RedirectToAction("ManagePodcast", new { podcastId = podcastId });
+            }
+            return RedirectToAction("Index", "Home");
+        }
 
         // ---------------------------------------------------------------------
         // 5. DELETE PODCAST
@@ -262,7 +354,6 @@ namespace PodcastManagementSystem.Controllers
 
 
         // POST: Podcaster/DeleteConfirmed/{podcastId}
-        // ➜ Actually deletes the podcast
         [HttpPost, ActionName("DeleteConfirmed")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int podcastId)
@@ -275,9 +366,5 @@ namespace PodcastManagementSystem.Controllers
 
             return RedirectToAction(nameof(Dashboard));
         }
-
-            // 4. Redirect back to the episode management view
-        //    return RedirectToAction(nameof(ManagePodcast), new { podcastId = podcastId });
-        //}
     }
 }

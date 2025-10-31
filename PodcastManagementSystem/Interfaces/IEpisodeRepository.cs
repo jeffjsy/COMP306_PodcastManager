@@ -17,5 +17,9 @@ namespace PodcastManagementSystem.Interfaces
 
         // DELETE: Remove an episode from the database
         Task DeleteEpisodeAsync(int episodeId);
+
+        // Gets the parent ID needed for redirection after deletion
+        Task<int> GetPodcastIdForEpisodeAsync(int episodeId);
+
     }
 }

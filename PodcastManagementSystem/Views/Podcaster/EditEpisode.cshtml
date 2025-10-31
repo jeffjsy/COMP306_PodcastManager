@@ -1,0 +1,45 @@
+﻿@model PodcastManagementSystem.Models.Episode
+
+@{
+    ViewData["Title"] = "Edit Episode";
+}
+
+<div class="container mt-5">
+    <h2>Edit Episode: @Model.Title</h2>
+    <hr />
+
+    <form asp-action="EditEpisode" method="post">
+        @Html.AntiForgeryToken()
+
+        @* CRITICAL: Hidden input to pass the primary key back to the POST action *@
+        <input type="hidden" asp-for="EpisodeID" />
+        <input type="hidden" asp-for="PodcastID" />
+        <input type="hidden" asp-for="AudioFileURL" />
+        <input type="hidden" asp-for="ReleaseDate" />
+
+        <div class="form-group mb-3">
+            <label asp-for="Title" class="control-label"></label>
+            <input asp-for="Title" class="form-control" />
+            <span asp-validation-for="Title" class="text-danger"></span>
+        </div>
+
+        <div class="form-group mb-3">
+        <label asp-for="Description" class="control-label"></label>
+        <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+        <span asp-validation-for="Description" class="text-danger"></span>
+        </div>
+
+        @*
+        <div class="form-group mb-3">
+            <label asp-for="DurationMinutes" class="control-label"></label>
+            <input asp-for="DurationMinutes" class="form-control" type="number" />
+            <span asp-validation-for="DurationMinutes" class="text-danger"></span>
+        </div>
+        *@
+
+        <div class="form-group">
+            <input type="submit" value="Save Changes" class="btn btn-primary" />
+            <a asp-action="ManagePodcast" asp-route-podcastId="@Model.PodcastID" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>

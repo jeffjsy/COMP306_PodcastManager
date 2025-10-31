@@ -15,9 +15,13 @@ namespace PodcastManagementSystem.Models
         public int PodcastID { get; set; }
 
 
-        // Title 
+        // Episode Title 
         [Required]
         public string Title { get; set; }
+
+        // Episode Description
+        [Required]
+        public string? Description { get; set; }
 
         // Release Date
         [DataType(DataType.Date)]

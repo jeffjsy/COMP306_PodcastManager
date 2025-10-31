@@ -12,8 +12,8 @@ using PodcastManagementSystem.Data;
 namespace PodcastManagementSystem.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20251030003400_JeffInitialCreate")]
-    partial class JeffInitialCreate
+    [Migration("20251031043800_MakeDescriptionNullable")]
+    partial class MakeDescriptionNullable
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -237,6 +237,9 @@ namespace PodcastManagementSystem.Migrations
 
                     b.Property<string>("AudioFileURL")
                         .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("DurationMinutes")

@@ -1,0 +1,39 @@
+﻿@model PodcastManagementSystem.Models.Episode
+
+@{
+    ViewData["Title"] = "Delete Episode";
+}
+
+<h2 class="text-danger">Delete Episode Confirmation</h2>
+<hr />
+
+<div class="alert alert-warning" role="alert">
+    <strong>WARNING:</strong> Are you absolutely sure you want to delete the episode **"@Model.Title"**? This action cannot be undone.
+</div>
+
+<div>
+    <h4>Episode Details</h4>
+    <dl class="row">
+        <dt class="col-sm-2">Title</dt>
+        <dd class="col-sm-10">@Html.DisplayFor(model => model.Title)</dd>
+
+        <dt class="col-sm-2">Release Date</dt>
+        <dd class="col-sm-10">@Html.DisplayFor(model => model.ReleaseDate)</dd>
+
+        <dt class="col-sm-2">Play Count</dt>
+        <dd class="col-sm-10">@Html.DisplayFor(model => model.PlayCount)</dd>
+    </dl>
+
+
+    {{-- 🌟 The POST form targets the DeleteEpisodeConfirmed action 🌟 --}}
+    <form asp-action="DeleteEpisode" method="post">
+        @Html.AntiForgeryToken()
+
+        @* Hidden input must send the ID value with the name 'id' *@
+        <input type="hidden" name="id" value="@Model.EpisodeID" />
+
+        <input type="submit" value="Confirm Delete Episode" class="btn btn-danger" /> |
+        <a asp-action="ManagePodcast" asp-route-podcastId="@Model.PodcastID">Cancel and Go Back</a>
+    </form>
+    
+</div>

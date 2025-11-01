@@ -51,15 +51,11 @@ namespace PodcastManagementSystem.Repositories
             await _context.SaveChangesAsync();
         }
 
-        // Extra: Delete comments
-        public async Task DeleteCommentAsync(int commentId)
+        //  Delete comments
+        public async Task DeleteCommentAsync(Comment comment)
         {
-            var comment = await _context.Comments.FindAsync(commentId);
-            if (comment != null)
-            {
-                _context.Comments.Remove(comment);
-                await _context.SaveChangesAsync();
-            }
+            _context.Comments.Remove(comment);
+            await _context.SaveChangesAsync();
         }
     }
 }

@@ -12,8 +12,9 @@ namespace PodcastManagementSystem.Interfaces
 
         // 3. Modify comments 
         Task<Comment> GetCommentByIdAsync(int commentId);
+
         Task UpdateCommentAsync(Comment comment);
-        Task DeleteCommentAsync(int commentId);
+        Task DeleteCommentAsync(Comment comment);
 
 
 

@@ -99,7 +99,7 @@ namespace PodcastManagementSystem.Controllers
         }
 
         // ---------------------------------------------------------------------
-        // 2. ADD & EDIT COMMENTS 
+        // 2. ADD & EDIT & DELETE COMMENTS
         // ---------------------------------------------------------------------
 
         [HttpPost]
@@ -193,6 +193,44 @@ namespace PodcastManagementSystem.Controllers
             catch (Exception)
             {
                 TempData["Error"] = "Failed to update comment due to a server error.";
+            }
+
+            // 4. Redirect
+            return RedirectToAction(nameof(ViewEpisode), new { episodeId = episodeId });
+        }
+
+        [HttpPost]
+        [Authorize]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteComment(int commentId, int episodeId)
+        {
+            // 1. Fetch the comment
+            var comment = await _commentRepository.GetCommentByIdAsync(commentId);
+            var userIdString = _userManager.GetUserId(User);
+            Guid currentUserIdGuid;
+
+            if (comment == null)
+            {
+                TempData["Error"] = "Comment not found.";
+                return RedirectToAction(nameof(ViewEpisode), new { episodeId = episodeId });
+            }
+
+            // 2. Authorization Check: Ensure the current user is the owner
+            if (!Guid.TryParse(userIdString, out currentUserIdGuid) || comment.UserID != currentUserIdGuid)
+            {
+                TempData["Error"] = "You are not authorized to delete this comment.";
+                return RedirectToAction(nameof(ViewEpisode), new { episodeId = episodeId });
+            }
+
+            // 3. Delete the Comment
+            try
+            {
+                await _commentRepository.DeleteCommentAsync(comment);
+                TempData["SuccessMessage"] = "Comment deleted successfully.";
+            }
+            catch (Exception)
+            {
+                TempData["Error"] = "Failed to delete comment due to a server error.";
             }
 
             // 4. Redirect

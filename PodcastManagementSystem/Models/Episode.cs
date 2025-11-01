@@ -39,5 +39,9 @@ namespace PodcastManagementSystem.Models
         // Navigation properties
         [ForeignKey("PodcastID")]
         public Podcast Podcast { get; set; }
+
+
+        //CreationOfEpisodeApproved
+        public bool CreationOfEpisodeApproved { get; set; }
     }
 }

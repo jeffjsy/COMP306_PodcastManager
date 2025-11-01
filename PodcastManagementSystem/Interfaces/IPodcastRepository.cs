@@ -35,6 +35,10 @@ namespace PodcastManagementSystem.Interfaces
         Task AddEpisodeAsync(Episode episode);
         Task UpdateEpisodeAsync(Episode episode); // For updating play count, title, etc.
         Task<IEnumerable<Episode>> GetEpisodesByPodcastIdAsync(int podcastId);
+        // gets episodes to be approved (for Admin Approval Queue)
+        Task<IEnumerable<Episode>> GetUnapprovedEpisodesByPodcastIdAsync(int podcastId);
+        // gets episodes that are approved (for ListenerViewer viewing)
+        Task<IEnumerable<Episode>> GetApprovedEpisodesByPodcastIdAsync(int podcastId);
 
 
 

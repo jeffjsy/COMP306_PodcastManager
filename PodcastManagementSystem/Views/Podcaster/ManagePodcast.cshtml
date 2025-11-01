@@ -51,6 +51,7 @@ else
         <thead>
             <tr>
                 <th>Title</th>
+                <th>Approved/Live</th>
                 <th>Release Date</th>
                 <th>Duration (min)</th>
                 <th>Actions</th>
@@ -61,6 +62,17 @@ else
             {
                 <tr>
                     <td>@episode.Title</td>
+                    <td>
+                        @if (!episode.CreationOfEpisodeApproved)
+                        {
+                            <span class="text-warning">(Unapproved)</span>
+                        }
+                        else
+                        {
+
+                            <span class="text-success">(Approved)</span>
+                        }
+                    </td>
                     <td>@episode.ReleaseDate.ToShortDateString()</td>
                     <td>@episode.DurationMinutes</td>
                     <td>

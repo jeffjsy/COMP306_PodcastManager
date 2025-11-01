@@ -1,13 +1,15 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Amazon.S3;
+using Amazon.S3.Model;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using PodcastManagementSystem.Controllers;
 using PodcastManagementSystem.Data;
 using PodcastManagementSystem.Interfaces;
 using PodcastManagementSystem.Models;
+using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using System.Linq;
-using Amazon.S3;
-using Microsoft.Extensions.Logging;
-using PodcastManagementSystem.Controllers;
+using System.Threading.Tasks;
 
 namespace PodcastManagementSystem.Repositories
 {
@@ -62,18 +64,24 @@ namespace PodcastManagementSystem.Repositories
             var episode = await _context.Episodes
                 .FirstOrDefaultAsync(e => e.EpisodeID == id);
 
+            DeleteObjectResponse s3_episodeDeleteion_result = null;
+
             if (episode != null)
             {
                 // 1. S3 Deletion
+
                 if (!string.IsNullOrEmpty(episode.AudioFileURL))
                 {
+                    var uri = new Uri(episode.AudioFileURL);
+                    var episodeKey = uri.AbsolutePath.TrimStart('/');
+
                     var deleteRequest = new Amazon.S3.Model.DeleteObjectRequest
                     {
                         BucketName = _bucketName,
-                        Key = episode.AudioFileURL 
+                        Key = episodeKey 
                     };
                      
-                    await _s3Client.DeleteObjectAsync(deleteRequest);
+                    s3_episodeDeleteion_result = await _s3Client.DeleteObjectAsync(deleteRequest);
                 }
 
                 // 2. DB Deletion
@@ -93,7 +101,5 @@ namespace PodcastManagementSystem.Repositories
            
             return podcastId;
         }
-
-
     }
 }

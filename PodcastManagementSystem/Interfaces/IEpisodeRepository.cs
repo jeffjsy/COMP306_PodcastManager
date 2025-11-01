@@ -1,6 +1,7 @@
-﻿using PodcastManagementSystem.Models;
-using System.Threading.Tasks;
+﻿using Microsoft.EntityFrameworkCore;
+using PodcastManagementSystem.Models;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace PodcastManagementSystem.Interfaces
 {
@@ -20,6 +21,5 @@ namespace PodcastManagementSystem.Interfaces
 
         // Gets the parent ID needed for redirection after deletion
         Task<int> GetPodcastIdForEpisodeAsync(int episodeId);
-
     }
 }

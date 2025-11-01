@@ -167,6 +167,26 @@ namespace PodcastManagementSystem.Repositories
                 .OrderByDescending(e => e.ReleaseDate) // Order by latest release date
                 .ToListAsync();
         }
+
+        // gets episodes to be approved (for Admin Approval Queue)
+        public async Task<IEnumerable<Episode>> GetUnapprovedEpisodesByPodcastIdAsync(int podcastId)
+        {
+            // This retrieves all episodes where the CreationOfEpisodeApproved col = 0. or false
+            return await _context.Episodes
+                .Where(e => e.CreationOfEpisodeApproved == false && e.PodcastID == podcastId)
+                .OrderBy(e => e.ReleaseDate) // Order by oldest release date
+                .ToListAsync();
+        }
+
+        // gets episodes that are approved (for ListenerViewer viewing)
+        public async Task<IEnumerable<Episode>> GetApprovedEpisodesByPodcastIdAsync(int podcastId)
+        {
+            // This retrieves all episodes where the CreationOfEpisodeApproved col = 1. or true
+            return await _context.Episodes
+                .Where(e => e.CreationOfEpisodeApproved == true && e.PodcastID == podcastId)
+                .OrderBy(e => e.ReleaseDate) // Order by oldest release date
+                .ToListAsync();
+        }
     }
 }
 

@@ -12,8 +12,8 @@ using PodcastManagementSystem.Data;
 namespace PodcastManagementSystem.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20251031044605_MadeEpisodeDescriptionRequired")]
-    partial class MadeEpisodeDescriptionRequired
+    [Migration("20251101113242_EpisodeModelChangeToIncludeColumnForCreationApproval")]
+    partial class EpisodeModelChangeToIncludeColumnForCreationApproval
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -227,6 +227,37 @@ namespace PodcastManagementSystem.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("PodcastManagementSystem.Models.Comment", b =>
+                {
+                    b.Property<int>("CommentID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CommentID"));
+
+                    b.Property<int>("EpisodeID")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("TimeStamp")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UserID")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("CommentID");
+
+                    b.HasIndex("EpisodeID");
+
+                    b.HasIndex("UserID");
+
+                    b.ToTable("Comments");
+                });
+
             modelBuilder.Entity("PodcastManagementSystem.Models.Episode", b =>
                 {
                     b.Property<int>("EpisodeID")
@@ -258,6 +289,9 @@ namespace PodcastManagementSystem.Migrations
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("creationOfEpisodeApproved")
+                        .HasColumnType("bit");
 
                     b.HasKey("EpisodeID");
 
@@ -368,6 +402,25 @@ namespace PodcastManagementSystem.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("PodcastManagementSystem.Models.Comment", b =>
+                {
+                    b.HasOne("PodcastManagementSystem.Models.Episode", "Episode")
+                        .WithMany()
+                        .HasForeignKey("EpisodeID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PodcastManagementSystem.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Episode");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("PodcastManagementSystem.Models.Episode", b =>

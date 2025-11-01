@@ -17,7 +17,10 @@ namespace PodcastManagementSystem.Interfaces
         Task UpdateEpisodeAsync(Episode episode);
 
         // DELETE: Remove an episode from the database
-        Task DeleteEpisodeAsync(int episodeId);
+        Task DeleteEpisodeByIdAsync(int episodeId);
+
+        // DELETE: Remove ALL episodes of given podcast
+        Task DeleteAllEpisodesByPodcastIdAsync(int podcastId);
 
         // Gets the parent ID needed for redirection after deletion
         Task<int> GetPodcastIdForEpisodeAsync(int episodeId);

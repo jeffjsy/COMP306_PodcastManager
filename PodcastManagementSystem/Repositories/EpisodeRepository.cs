@@ -6,6 +6,7 @@ using PodcastManagementSystem.Controllers;
 using PodcastManagementSystem.Data;
 using PodcastManagementSystem.Interfaces;
 using PodcastManagementSystem.Models;
+using PodcastManagementSystem.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,17 +15,25 @@ using System.Threading.Tasks;
 namespace PodcastManagementSystem.Repositories
 {
     public class EpisodeRepository : IEpisodeRepository
+
     
     {
         private readonly ApplicationDbContext _context;
         private readonly IAmazonS3 _s3Client;
+        private readonly IS3Service _s3Service;
         private readonly string _bucketName = "comp306-podcast-media-bucket";
         private readonly ILogger<PodcasterController> _logger;
 
-        public EpisodeRepository(ApplicationDbContext context, IAmazonS3 s3Client)
+        public EpisodeRepository(
+    ApplicationDbContext context,
+    IAmazonS3 s3Client,
+    IS3Service s3Service,
+    ILogger<PodcasterController> logger)
         {
             _context = context;
             _s3Client = s3Client;
+            _s3Service = s3Service;
+            _logger = logger;
         }
 
         // CREATE
@@ -59,7 +68,7 @@ namespace PodcastManagementSystem.Repositories
         }
 
         // DELETE
-        public async Task DeleteEpisodeAsync(int id) 
+        public async Task DeleteEpisodeByIdAsync(int id) 
         {
             var episode = await _context.Episodes
                 .FirstOrDefaultAsync(e => e.EpisodeID == id);
@@ -88,6 +97,48 @@ namespace PodcastManagementSystem.Repositories
                 _context.Episodes.Remove(episode);
                 await _context.SaveChangesAsync();
             }
+        }
+
+        public async Task DeleteAllEpisodesByPodcastIdAsync(int podcastId)
+        {
+            var episodes = _context.Episodes.Where(e => e.PodcastID == podcastId);
+            foreach (var e in episodes)
+            {
+                //await _s3Service.DeleteFileAsync(e.AudioFileURL);
+                await _s3Service.DeleteFileAsync(e.AudioFileURL);
+                // 2. DB Deletion
+                _context.Episodes.Remove(e);
+            }
+
+
+            await _context.SaveChangesAsync();
+
+            //var episode = await _context.Episodes
+            //    .FirstOrDefaultAsync(e => e.EpisodeID == id);
+
+            //DeleteObjectResponse s3_episodeDeleteion_result = null;
+
+            //if (episode != null)
+            //{
+            //    // 1. S3 Deletion
+
+            //    if (!string.IsNullOrEmpty(episode.AudioFileURL))
+            //    {
+            //        var uri = new Uri(episode.AudioFileURL);
+            //        var episodeKey = uri.AbsolutePath.TrimStart('/');
+
+            //        var deleteRequest = new Amazon.S3.Model.DeleteObjectRequest
+            //        {
+            //            BucketName = _bucketName,
+            //            Key = episodeKey
+            //        };
+
+            //        s3_episodeDeleteion_result = await _s3Client.DeleteObjectAsync(deleteRequest);
+            //    }
+
+            //// 2. DB Deletion
+            //_context.Episodes.Remove(episode);
+            //await _context.SaveChangesAsync();
         }
 
         public async Task<int> GetPodcastIdForEpisodeAsync(int episodeId)

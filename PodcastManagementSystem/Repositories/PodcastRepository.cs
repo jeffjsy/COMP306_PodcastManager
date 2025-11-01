@@ -12,6 +12,7 @@ namespace PodcastManagementSystem.Repositories
     public class PodcastRepository : IPodcastRepository
     {
         private readonly ApplicationDbContext _context;
+        private readonly IS3Service _s3Service;
 
         public PodcastRepository(ApplicationDbContext context)
         {
@@ -133,9 +134,22 @@ namespace PodcastManagementSystem.Repositories
             if (podcast == null)
                 return; // Nothing to delete
 
-            // Optional: If you also store episodes, delete them first
-            var episodes = _context.Episodes.Where(e => e.PodcastID == podcastId);
-            _context.Episodes.RemoveRange(episodes);
+            //delete subscriptions
+            var subscriptions = _context.Subscriptions.Where(e => e.PodcastID == podcastId);
+            _context.Subscriptions.RemoveRange(subscriptions);
+
+            // Optional: If you also store episodes, delete them first            
+            //var episodes = _context.Episodes.Where(e => e.PodcastID == podcastId);
+            //first delete episode audio files from s3
+            //foreach (var e in episodes)
+            //{
+            //    await _s3Service.DeleteFileAsync(e.AudioFileURL);
+            //}
+
+
+
+            //finally delete sql db files
+            //_context.Episodes.RemoveRange(episodes); //done in new episodeRepo method
 
             // Remove the podcast
             _context.Podcasts.Remove(podcast);

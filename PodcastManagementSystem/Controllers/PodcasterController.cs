@@ -317,7 +317,7 @@ namespace PodcastManagementSystem.Controllers
             // Get Podcast ID BEFORE deleting the episode record!
             int podcastId = await _episodeRepository.GetPodcastIdForEpisodeAsync(id);
 
-            await _episodeRepository.DeleteEpisodeAsync(id);
+            await _episodeRepository.DeleteEpisodeByIdAsync(id);
 
             if (podcastId > 0)
             {
@@ -359,10 +359,16 @@ namespace PodcastManagementSystem.Controllers
         public async Task<IActionResult> DeleteConfirmed(int podcastId)
         {
             var podcast = await _podcastRepository.GetPodcastByIdAsync(podcastId);
+            //delete episodes (s3 and sql)
+            await _episodeRepository.DeleteAllEpisodesByPodcastIdAsync(podcast.PodcastID);
+
+
+            //delete podcast (podcast)
+
             if (podcast == null || podcast.CreatorID != Guid.Parse(_userManager.GetUserId(User)))
                 return NotFound();
 
-            await _podcastRepository.DeletePodcastAsync(podcastId);
+            await _podcastRepository.DeletePodcastAsync(podcastId); //deletes subs then podcast
 
             return RedirectToAction(nameof(Dashboard));
         }

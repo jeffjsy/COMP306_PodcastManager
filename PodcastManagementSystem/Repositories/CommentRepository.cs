@@ -1,6 +1,8 @@
 ﻿using Amazon.DynamoDBv2.DataModel;
 using Amazon.DynamoDBv2.DocumentModel;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using PodcastManagementSystem.Data;
 using PodcastManagementSystem.Interfaces;
 using PodcastManagementSystem.Models;
 using System.Collections.Generic;
@@ -10,46 +12,54 @@ namespace PodcastManagementSystem.Repositories
 {
     public class CommentRepository : ICommentRepository
     {
-        
-        private readonly IDynamoDBContext _dbContext;
+        private readonly ApplicationDbContext _context;
 
-        public CommentRepository(IDynamoDBContext dbContext, IConfiguration configuration)
+        public CommentRepository(ApplicationDbContext context)
         {
-            _dbContext = dbContext;
-            // _tableName = configuration["AWS:DynamoDB:CommentsTableName"];
+            _context = context;
         }
 
+        // 1. Add comments
         public async Task AddCommentAsync(Comment comment)
         {
-            // SaveAsync handles both initial creation and update operations (upsert).
-            await _dbContext.SaveAsync(comment);
+            _context.Comments.Add(comment);
+            await _context.SaveChangesAsync();
         }
 
-
-        public async Task<List<Comment>> GetCommentsByEpisodeIdAsync(int episodeId)
+        // 2. List comments (Eager load the User for display)
+        public async Task<IEnumerable<Comment>> GetCommentsByEpisodeIdAsync(int episodeId)
         {
-            var conditions = new List<ScanCondition>
+            return await _context.Comments
+                .Include(c => c.User) // Necessary to display the username with the comment
+                .Where(c => c.EpisodeID == episodeId)
+                .OrderByDescending(c => c.TimeStamp) // Newest first
+                .ToListAsync();
+        }
+
+        // 3. Get comment by ID for security/edit check
+        public async Task<Comment> GetCommentByIdAsync(int commentId)
+        {
+            return await _context.Comments
+                .Include(c => c.User)
+                .FirstOrDefaultAsync(c => c.CommentID == commentId);
+        }
+
+        // 3. Update comments (Uses the critical update technique)
+        public async Task UpdateCommentAsync(Comment comment)
+        {
+            _context.Entry(comment).State = EntityState.Modified;
+            await _context.SaveChangesAsync();
+        }
+
+        // Extra: Delete comments
+        public async Task DeleteCommentAsync(int commentId)
+        {
+            var comment = await _context.Comments.FindAsync(commentId);
+            if (comment != null)
             {
-                // This checks the EpisodeID attribute on all items.
-                new ScanCondition("EpisodeID", ScanOperator.Equal, episodeId)
-            };
-
-            var search = _dbContext.ScanAsync<Comment>(conditions);
-            return await search.GetRemainingAsync();
-        }
-
-
-        public async Task<Comment> GetCommentByIdAsync(string commentId, int episodeId)
-        {
-
-            return await _dbContext.LoadAsync<Comment>(commentId);
-        }
-
-        public async Task<bool> UpdateCommentAsync(Comment comment)
-        {
-            // SaveAsync handles the update operation.
-            await _dbContext.SaveAsync(comment);
-            return true;
+                _context.Comments.Remove(comment);
+                await _context.SaveChangesAsync();
+            }
         }
     }
 }

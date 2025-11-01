@@ -17,7 +17,7 @@ namespace PodcastManagementSystem.Models
 
         // Episode Title 
         [Required]
-        public string Title { get; set; }
+        public string? Title { get; set; }
 
         // Episode Description
         [Required]

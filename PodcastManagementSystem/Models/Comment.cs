@@ -1,5 +1,7 @@
 ﻿using Amazon.DynamoDBv2.DataModel;
 using System;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.ComponentModel.DataAnnotations;
 
 namespace PodcastManagementSystem.Models
 
@@ -7,24 +9,33 @@ namespace PodcastManagementSystem.Models
     [DynamoDBTable("PodcastComments")]
     public class Comment
     {
-        // CommentID (Primary Key/Partition Key in DynamoDB) 
-        [DynamoDBHashKey] // Hash key (Partition Key)
-        public string CommentID { get; set; }
+        [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public int CommentID { get ; set; }
 
-        // EpisodeID 
-        
+        // Foreign Key to Episode
+        [Required]
+        [ForeignKey("EpisodeID")]
         public int EpisodeID { get; set; }
 
-        // PodcastID
-        public int PodcastID { get; set; }
+        // Foreign Key to ApplicationUser (The Comment Author)
+        [Required]
+        public Guid UserID { get; set; } // Stored as string to match Identity User ID type
 
-        // UserID (Who wrote the comment)
-        public string UserID { get; set; }
-
-        // Text (The comment content) 
+        // Comment Content
+        [Required(ErrorMessage = "Comment content is required.")]
+        [StringLength(500, ErrorMessage = "Comment cannot exceed 500 characters.")]
         public string Text { get; set; }
 
-        // Timestamp
-        public DateTime Timestamp { get; set; }
+        // Timestamp for Creation
+        public DateTime TimeStamp { get; set; }
+
+        // Navigation Properties
+        public Episode Episode { get; set; }
+
+        // Navigation property to IdentityUser
+        // We link to ApplicationUser, which inherits from IdentityUser
+        [ForeignKey("UserID")]
+        public ApplicationUser User { get; set; }
     }
 }

@@ -1,0 +1,167 @@
+﻿@model PodcastManagementSystem.Models.ViewModels.EpisodeCommentsViewModel
+@using Microsoft.AspNetCore.Identity
+@inject UserManager<ApplicationUser> UserManager 
+
+@{
+    ViewData["Title"] = Model.Episode.Title;
+    Guid currentUserIdGuid = Guid.Empty;
+    var userIdString = UserManager.GetUserId(User);
+    if (!string.IsNullOrEmpty(userIdString))
+    {
+        Guid.TryParse(userIdString, out currentUserIdGuid);
+    }
+}
+
+<div class="container mt-5">
+    <div class="row">
+
+        @* --- Episode Details (Left Column) --- *@
+        <div class="col-lg-8">
+            <h1 class="display-5 text-primary">@Model.Episode.Title</h1>
+            <p class="lead">From the channel: @Model.Episode.Podcast.Title</p>
+            <hr />
+
+            <div class="mb-4">
+                <p class="text-muted">
+                    Released: @Model.Episode.ReleaseDate.ToShortDateString()
+                    <span class="ms-3 badge bg-secondary">@Model.Episode.DurationMinutes min</span>
+                </p>
+
+                @* Audio Player *@
+                <audio controls class="mt-2 w-100">
+                    <source src="@Model.Episode.AudioFileURL" type="audio/mpeg">
+                    Your browser does not support the audio element.
+                </audio>
+
+                <h3 class="mt-4">Episode Description</h3>
+                <p>@Model.Episode.Description</p>
+            </div>
+
+            @* --- Comment Section --- *@
+            <div class="mt-5">
+                <h2>Comments (@Model.Comments.Count())</h2>
+                <hr />
+
+                @* Display Success/Error Messages from TempData *@
+                @if (TempData["SuccessMessage"] != null)
+                {
+                    <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+                }
+                @if (TempData["Error"] != null)
+                {
+                    <div class="alert alert-danger">@TempData["Error"]</div>
+                }
+
+                @* --- Comment Submission Form  --- *@
+                @if (User.Identity.IsAuthenticated)
+                {
+                    <h3>Leave a Comment</h3>
+                    <form asp-action="AddComment" asp-controller="ListenerViewer" method="post">
+                        @* Added asp-controller for clarity *@
+                        @Html.AntiForgeryToken()
+
+                        <input type="hidden" name="episodeId" value="@Model.EpisodeID" />
+
+                        <div class="form-group mb-3">
+                            <textarea name="commentText" class="form-control" rows="3"
+                                                         placeholder="Write your comment here..."
+                                                         maxlength="500"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-sm btn-primary">Post Comment</button>
+                    </form>
+                    <hr />
+                }
+                else
+                {
+                    <div class="alert alert-warning">
+                        Please <a asp-area="Identity" asp-page="/Account/Login">log in</a> to post a comment.
+                    </div>
+                }
+
+                @* --- List of Existing Comments --- *@
+                <div id="comment-list" class="mt-4">
+                    @if (Model.Comments.Any())
+                    {
+                        @foreach (var comment in Model.Comments)
+                        {
+                            <div class="card mb-3 shadow-sm">
+                                <div class="card-body">
+                                    @* Display Comment Text *@
+                                    <p class="card-text">@comment.Text</p>
+
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        @* 🌟 NEW: Display Username and Timestamp 🌟 *@
+                                        <small class="text-muted">
+                                            Posted by **@comment.User.UserName** on @comment.TimeStamp.ToLocalTime().ToString("f")
+                                        </small>
+
+
+                                        @* Edit Button & Logic (Corrected to use currentUserIdGuid) *@
+                                        @if (comment.UserID == currentUserIdGuid && (DateTime.UtcNow - comment.TimeStamp).TotalHours <= 24)
+                                        {
+                                            <button type="button" class="btn btn-sm btn-outline-warning"
+                                                                              data-bs-toggle="modal"
+                                                                              data-bs-target="#editModal_@comment.CommentID"
+                                                                              title="Edit comment">
+                                                Edit
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+
+                            @* Modal for Editing a Comment *@
+                            @if (comment.UserID == currentUserIdGuid && (DateTime.UtcNow - comment.TimeStamp).TotalHours <= 24)
+                            {
+                                <div class="modal fade" id="editModal_@comment.CommentID" tabindex="-1" aria-labelledby="editModalLabel_@comment.CommentID" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="editModalLabel_@comment.CommentID">Edit Your Comment</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <form asp-action="EditComment" method="post">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="commentId" value="@comment.CommentID" />
+                                                <input type="hidden" name="episodeId" value="@Model.EpisodeID" />
+                                                <div class="modal-body">
+                                                    <textarea name="updatedText" class="form-control" rows="4" maxlength="500" required>@comment.Text</textarea>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                                    <button type="submit" class="btn btn-warning">Save Changes</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        }
+                    }
+                    else
+                    {
+                        <p class="text-info">Be the first to leave a comment!</p>
+                    }
+                </div>
+            </div>
+        </div>
+
+        @* --- Side Navigation (Right Column - Optional) --- *@
+        <div class="col-lg-4 d-none d-lg-block">
+            <div class="position-sticky" style="top: 2rem;">
+                <h3 class="mb-3">Quick Actions</h3>
+                <ul class="list-group">
+                    <a asp-controller="ListenerViewer" asp-action="ViewChannel" asp-route-podcastId="@Model.Episode.PodcastID" class="list-group-item list-group-item-action">
+                        Back to Channel
+                    </a>
+                    @if (User.Identity.IsAuthenticated)
+                    {
+                        <a href="#comment-list" class="list-group-item list-group-item-action">
+                            Post Comment
+                        </a>
+                    }
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>

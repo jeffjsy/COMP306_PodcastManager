@@ -16,6 +16,7 @@ namespace PodcastManagementSystem.Data
         public DbSet<Podcast> Podcasts { get; set; }
         public DbSet<Episode> Episodes { get; set; }
         public DbSet<Subscription> Subscriptions { get; set; }
+        public DbSet<Comment> Comments { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {

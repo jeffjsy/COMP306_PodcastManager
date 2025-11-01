@@ -37,6 +37,7 @@ namespace PodcastManagementSystem.Repositories
         {
             
             return await _context.Episodes
+                .Include(e => e.Podcast)
                 //.AsNoTracking() // Uncomment this and run if there is a mismatch between your local DB and cache 
                 .FirstOrDefaultAsync(e => e.EpisodeID == episodeId);
 

@@ -31,17 +31,15 @@ else
         {
             <li class="list-group-item d-flex justify-content-between align-items-center">
                 <div class="me-auto">
-                    <h5>@episode.Title</h5>
+                    <a asp-controller="ListenerViewer" asp-action="ViewEpisode" asp-route-episodeId="@episode.EpisodeID" class="text-decoration-none">
+                        <h5 class="text-primary">@episode.Title</h5>
+                    </a>
                     <p class="mb-1 text-muted">
                         Released: @episode.ReleaseDate.ToShortDateString()
                         <span class="ms-3 badge bg-secondary">@episode.DurationMinutes min</span>
                     </p>
 
-                    @* Basic HTML5 Audio Player *@
-                    <audio controls class="mt-2 w-100">
-                        <source src="@episode.AudioFileURL" type="audio/mpeg">
-                        Your browser does not support the audio element.
-                    </audio>
+                    
                 </div>
 
                 @* Optional: Download Link *@

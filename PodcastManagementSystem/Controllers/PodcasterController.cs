@@ -369,7 +369,7 @@ namespace PodcastManagementSystem.Controllers
                 return NotFound();
 
             await _podcastRepository.DeletePodcastAsync(podcastId); //deletes subs then podcast
-
+             
             return RedirectToAction(nameof(Dashboard));
         }
     }

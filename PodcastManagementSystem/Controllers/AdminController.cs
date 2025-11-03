@@ -197,14 +197,35 @@ namespace PodcastManagementSystem.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(Guid id)
         {
-            var applicationUser = await _context.Users.FindAsync(id);
-            if (applicationUser != null)
+            //var applicationUser = await _context.Users.FindAsync(id);
+            //if (applicationUser != null)
+            //{
+            //    _context.Users.Remove(applicationUser);
+            //}
+
+            var user = await _userManager.FindByIdAsync(id);
+
+            if (user == null)
             {
-                _context.Users.Remove(applicationUser);
+                return NotFound();
             }
 
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(UserManagement));
+            var result = await _userManager.DeleteAsync(user);
+
+            if (result.Succeeded)
+            {
+                return RedirectToAction(nameof(UserManagement));
+            }
+
+            //await _context.SaveChangesAsync();
+            //return RedirectToAction(nameof(UserManagement));
+            foreach (var error in result.Errors)
+            {
+                ModelState.AddModelError(string.Empty, error.Description);
+            }
+
+            return View(user);
+
         }
 
 

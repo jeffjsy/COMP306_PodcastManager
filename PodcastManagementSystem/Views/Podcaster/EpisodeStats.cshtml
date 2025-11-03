@@ -1,60 +1,101 @@
 ﻿@* File: Views/Podcaster/EpisodeStats.cshtml *@
 @model PodcastManagementSystem.Models.ViewModels.EpisodeStatsViewModel
-
 @{
     ViewData["Title"] = $"Analytics: {Model.PodcastTitle}";
 }
 
 <h2 class="text-primary mt-4 mb-3">📈 Analytics: @Model.PodcastTitle</h2>
-<p class="text-muted">Aggregated statistics powered by DynamoDB.</p>
+<p class="text-muted">Click on a column header to sort the data.</p>
 <hr />
 
-<div class="row">
-    <div class="col-12">
-        <div class="card shadow-sm mb-4">
-            <div class="card-header bg-light">
-                <h4 class="mb-0"><i class="bi bi-trophy me-2"></i> Top Episodes by Views</h4>
-            </div>
-            <div class="card-body">
-                @if (Model.TopEpisodes == null || !Model.TopEpisodes.Any())
-                {
-                    <div class="alert alert-warning" role="alert">
-                        No summary data available yet. Please check back later!
-                    </div>
-                }
-                else
-                {
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th scope="col">#</th>
-                                <th scope="col">Episode Title</th>
-                                <th scope="col" class="text-end">View Count</th>
-                                <th scope="col" class="text-end">Comment Count</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @{
-                                var rank = 1;
-                            }
-                            @foreach (var episode in Model.TopEpisodes)
-                            {
-                                <tr>
-                                    <th scope="row">@rank</th>
-                                    <td>@episode.EpisodeTitle</td>
-                                    <td class="text-end">@episode.ViewCount.ToString("N0")</td>
-                                    <td class="text-end">@episode.CommentCount.ToString("N0")</td>
-                                </tr>
-                                rank++;
-                            }
-                        </tbody>
-                    </table>
-                }
-            </div>
-        </div>
-    </div>
-</div>
+@* ... card structure ... *@
 
-<a asp-controller="Podcaster" asp-action="Dashboard" class="btn btn-secondary mt-3">
-    <i class="bi bi-arrow-left-circle me-1"></i> Back to Dashboard
-</a>
+<table id="episodeStatsTable" class="table table-hover">
+    <thead>
+        <tr>
+            <th scope="col" data-sort="number">#</th>
+            <th scope="col" data-sort="string">Episode Title</th>
+
+            @* 🌟 RELEASE DATE HEADER 🌟 *@
+            <th scope="col" class="text-start" data-sort="date">Release Date</th>
+
+            @* 🌟 VIEW COUNT HEADER 🌟 *@
+            <th scope="col" class="text-end" data-sort="number">View Count</th>
+
+            <th scope="col" class="text-end" data-sort="number">Comment Count</th>
+        </tr>
+    </thead>
+    <tbody>
+        @{
+            var rank = 1;
+        }
+        @foreach (var episode in Model.TopEpisodes)
+        {
+            <tr>
+                <th scope="row">@rank</th>
+                <td>@episode.EpisodeTitle</td>
+
+                @* 🌟 RELEASE DATE DATA 🌟 *@
+                <td>@episode.ReleaseDate.ToShortDateString()</td>
+
+                <td class="text-end">@episode.ViewCount.ToString("N0")</td>
+                <td class="text-end">@episode.CommentCount.ToString("N0")</td>
+            </tr>
+            rank++;
+        }
+    </tbody>
+</table>
+
+@section Scripts {
+    <script>
+        // Simple client-side table sorting script
+        document.addEventListener('DOMContentLoaded', function () {
+            const table = document.getElementById('episodeStatsTable');
+            if (!table) return;
+
+            const headers = table.querySelectorAll('th[data-sort]');
+            const tbody = table.querySelector('tbody');
+
+            // Find the index of the column that was clicked
+            headers.forEach((header, index) => {
+                header.addEventListener('click', function () {
+                    const sortType = this.getAttribute('data-sort');
+                    const rows = Array.from(tbody.querySelectorAll('tr'));
+                    const direction = this.classList.contains('asc') ? 'desc' : 'asc';
+
+                    // Remove current sort classes
+                    headers.forEach(h => h.classList.remove('asc', 'desc'));
+
+                    // Sort the rows
+                    rows.sort((a, b) => {
+                        let aText = a.children[index].textContent.trim();
+                        let bText = b.children[index].textContent.trim();
+                        let comparison = 0;
+
+                        if (sortType === 'number') {
+                            aText = parseInt(aText.replace(/,/g, ''));
+                            bText = parseInt(bText.replace(/,/g, ''));
+                            comparison = aText > bText ? 1 : aText < bText ? -1 : 0;
+                        } else if (sortType === 'date') {
+                            aText = new Date(aText);
+                            bText = new Date(bText);
+                            comparison = aText > bText ? 1 : aText < bText ? -1 : 0;
+                        } else { // string
+                            comparison = aText.localeCompare(bText);
+                        }
+
+                        return direction === 'asc' ? comparison : comparison * -1;
+                    });
+
+                    // Append the sorted rows back to the tbody
+                    rows.forEach(row => tbody.appendChild(row));
+
+                    // Add the new sort class
+                    this.classList.add(direction);
+                });
+            });
+
+           
+        });
+    </script>
+}

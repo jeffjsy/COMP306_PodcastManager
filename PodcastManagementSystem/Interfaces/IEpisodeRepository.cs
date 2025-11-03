@@ -26,5 +26,7 @@ namespace PodcastManagementSystem.Interfaces
         Task<int> GetPodcastIdForEpisodeAsync(int episodeId);
 
         Task<List<Episode>> GetEpisodesByPodcastIdAsync(int podcastId);
+
+        Task<List<Episode>> SearchEpisodesAsync(int podcastId, string query, string searchBy);
     }
 }

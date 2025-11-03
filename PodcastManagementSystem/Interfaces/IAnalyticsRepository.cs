@@ -8,5 +8,7 @@
         Task LogEpisodeViewAsync(int podcastId, int episodeId);
 
         Task UpdateCommentCountAsync(int podcastId, int episodeId, int adjustment);
+
+        Task DeleteEpisodeSummaryAsync(int podcastId, int episodeId);
     }
 }

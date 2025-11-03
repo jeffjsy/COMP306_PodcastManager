@@ -93,5 +93,14 @@ namespace PodcastManagementSystem.Repositories
             // Save the new or updated summary item to DynamoDB
             await _dynamoDbContext.SaveAsync(summary);
         }
+
+        public async Task DeleteEpisodeSummaryAsync(int podcastId, int episodeId)
+        {
+            // 1. Create a key object representing the item to delete (PodcastID is PK, EpisodeID is SK)
+            var key = new EpisodeSummary { PodcastID = podcastId, EpisodeID = episodeId };
+
+            // 2. Use the DynamoDB context to perform the deletion
+            await _dynamoDbContext.DeleteAsync(key);
+        }
     }
 }

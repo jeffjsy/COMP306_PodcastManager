@@ -20,9 +20,13 @@ namespace PodcastManagementSystem.Controllers
         }
 
         // GET: Admin
-        public async Task<IActionResult> Index()
+        //public async Task<IActionResult> Index()
+        //{
+        //    return View(await _context.Users.ToListAsync());
+        //}
+        public IActionResult Dashboard()
         {
-            return View(await _context.Users.ToListAsync());
+            return View();
         }
 
         // GET: Admin/Details/5

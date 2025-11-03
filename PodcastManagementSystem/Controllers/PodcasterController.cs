@@ -22,19 +22,23 @@ namespace PodcastManagementSystem.Controllers
         private readonly IS3Service _s3Service;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ILogger<PodcasterController> _logger;
+        private readonly IAnalyticsRepository _analyticsRepository;
 
         public PodcasterController(
             IPodcastRepository podcastRepository,
             IEpisodeRepository episodeRepository,
             IS3Service s3Service,
             UserManager<ApplicationUser> userManager,
-            ILogger<PodcasterController> logger)
+            ILogger<PodcasterController> logger,
+            IAnalyticsRepository analyticsRepository)
+
         {
             _podcastRepository = podcastRepository;
             _episodeRepository = episodeRepository;
             _s3Service = s3Service;
             _userManager = userManager;
             _logger = logger;
+            _analyticsRepository = analyticsRepository;
         }
 
         // ---------------------------------------------------------------------
@@ -370,8 +374,67 @@ namespace PodcastManagementSystem.Controllers
             return RedirectToAction(nameof(Dashboard));
         }
 
+        // ---------------------------------------------------------------------
+        // 7. Analytics
+        // ---------------------------------------------------------------------
 
+        [Authorize(Roles = "Podcaster, Admin")] 
+        public async Task<IActionResult> EpisodeStats(int podcastId)
+        {
+            // 1. Fetch RDBMS data needed for display (Podcast and Episodes)
+            var podcast = await _podcastRepository.GetPodcastByIdAsync(podcastId);
 
+            if (podcast == null)
+            {
+                TempData["Error"] = "Podcast not found.";
+                return RedirectToAction(nameof(Dashboard));
+            }
 
+            // Fetch all episodes belonging to this podcast to get their titles
+            var allEpisodes = await _episodeRepository.GetEpisodesByPodcastIdAsync(podcastId);
+            var episodeMap = allEpisodes.ToDictionary(e => e.EpisodeID, e => e.Title);
+
+            // 2. Get Summary Data from DynamoDB
+            // This fetches pre-calculated metrics (views, comments) for all episodes in this podcast
+            var summaries = await _analyticsRepository.GetEpisodeSummariesByPodcastIdAsync(podcastId);
+
+            // 3. Sort the Data
+            if (summaries != null)
+            {
+                foreach (var summary in summaries)
+                {
+                    // Populate the RDBMS data (Title) onto the DynamoDB summary object
+                    if (episodeMap.ContainsKey(summary.EpisodeID))
+                    {
+                        summary.EpisodeTitle = episodeMap[summary.EpisodeID];
+                    }
+                    // If the episode is deleted from the RDBMS, we can skip it or mark it
+                    else
+                    {
+                        summary.EpisodeTitle = "[Deleted Episode]";
+                    }
+                    summary.PodcastTitle = podcast.Title;
+                }
+
+                // Sort by ViewCount descending and take the top 10 (or all available)
+                summaries = summaries
+                                .OrderByDescending(s => s.ViewCount)
+                                .ToList();
+            }
+            else
+            {
+                summaries = new List<EpisodeSummary>();
+            }
+
+            // 4. Prepare and return the View Model
+            var model = new EpisodeStatsViewModel
+            {
+                PodcastTitle = podcast.Title,
+                // Passing all sorted summaries to the view
+                TopEpisodes = summaries
+            };
+
+            return View(model);
+        }
     }
 }

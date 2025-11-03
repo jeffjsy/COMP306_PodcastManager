@@ -14,6 +14,9 @@ namespace PodcastManagementSystem.Interfaces
         // READ: Get a specific episode by its ID
         Task<Episode> GetEpisodeByIdAsync(int episodeId);
 
+        // ReadL Get all episodes
+        Task<IEnumerable<Episode>> GetAllEpisodesAsync();
+
         // UPDATE: Update an existing episode's metadata
         Task UpdateEpisodeAsync(Episode episode);
 
@@ -26,7 +29,6 @@ namespace PodcastManagementSystem.Interfaces
         // Gets the parent ID needed for redirection after deletion
         Task<int> GetPodcastIdForEpisodeAsync(int episodeId);
 
-        //Get all episodes
-        Task<IEnumerable<Episode>> GetAllEpisodesAsync();
+        Task<List<Episode>> GetEpisodesByPodcastIdAsync(int podcastId);
     }
 }

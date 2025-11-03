@@ -1,11 +1,13 @@
 ﻿@model PodcastManagementSystem.Models.ViewModels.EpisodeCommentsViewModel
 @using Microsoft.AspNetCore.Identity
-@inject UserManager<ApplicationUser> UserManager 
+@inject UserManager<ApplicationUser> UserManager
 
 @{
     ViewData["Title"] = Model.Episode.Title;
     Guid currentUserIdGuid = Guid.Empty;
     var userIdString = UserManager.GetUserId(User);
+
+   
     if (!string.IsNullOrEmpty(userIdString))
     {
         Guid.TryParse(userIdString, out currentUserIdGuid);
@@ -63,8 +65,8 @@
 
                         <div class="form-group mb-3">
                             <textarea name="commentText" class="form-control" rows="3"
-                                                                   placeholder="Write your comment here..."
-                                                                   maxlength="500"></textarea>
+                                      placeholder="Write your comment here..."
+                                      maxlength="500"></textarea>
                         </div>
                         <button type="submit" class="btn btn-sm btn-primary">Post Comment</button>
                     </form>
@@ -94,8 +96,9 @@
                                             Posted by **@comment.User.UserName** on @comment.TimeStamp.ToLocalTime().ToString("f")
                                         </small>
 
-                                        @* 🌟 NEW: Edit and Delete Buttons Container 🌟 *@
+                                        @* Edit and Delete Buttons Container *@
                                         <div class="d-flex align-items-center">
+
                                             @* Edit Button & Logic (within 24 hours) *@
                                             @if (comment.UserID == currentUserIdGuid && (DateTime.UtcNow - comment.TimeStamp).TotalHours <= 24)
                                             {
@@ -107,13 +110,13 @@
                                                 </button>
                                             }
 
-                                            @* 🌟 NEW: Delete Button (Only for the owner) 🌟 *@
+                                            @* Delete Button (Only for the owner) *@
                                             @if (comment.UserID == currentUserIdGuid)
                                             {
                                                 <form asp-action="DeleteComment" asp-controller="ListenerViewer" method="post"
                                                       onsubmit="return confirm('Are you sure you want to delete this comment? This cannot be undone.');">
                                                     @Html.AntiForgeryToken()
-                                                    <input type="hidden" name="commentId" value="@comment.CommentID" />
+                                                    <input type="hidden" name="commentId" value="@comment.CommentID.ToString()" />
                                                     <input type="hidden" name="episodeId" value="@Model.EpisodeID" />
                                                     <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete comment">
                                                         Delete
@@ -125,7 +128,7 @@
                                 </div> @* end card-body *@
                             </div> @* end card *@
 
-                            @* Modal for Editing a Comment *@
+                            @* Modal for Editing a Comment - Must be placed outside the card element *@
                             @if (comment.UserID == currentUserIdGuid && (DateTime.UtcNow - comment.TimeStamp).TotalHours <= 24)
                             {
                                 <div class="modal fade" id="editModal_@comment.CommentID" tabindex="-1" aria-labelledby="editModalLabel_@comment.CommentID" aria-hidden="true">
@@ -136,9 +139,11 @@
                                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                             </div>
                                             <form asp-action="EditComment" asp-controller="ListenerViewer" method="post">
-                                                @* Added asp-controller *@
                                                 @Html.AntiForgeryToken()
-                                                <input type="hidden" name="commentId" value="@comment.CommentID" />
+
+                                                
+                                                <input type="hidden" name="commentId" value="@comment.CommentID.ToString()" />
+
                                                 <input type="hidden" name="episodeId" value="@Model.EpisodeID" />
                                                 <div class="modal-body">
                                                     <textarea name="updatedText" class="form-control" rows="4" maxlength="500" required>@comment.Text</textarea>
@@ -162,7 +167,7 @@
             </div>
         </div>
 
-        @* --- Side Navigation (Right Column - Optional) --- *@
+        @* --- Side Navigation (Right Column) --- *@
         <div class="col-lg-4 d-none d-lg-block">
             <div class="position-sticky" style="top: 2rem;">
                 <h3 class="mb-3">Quick Actions</h3>

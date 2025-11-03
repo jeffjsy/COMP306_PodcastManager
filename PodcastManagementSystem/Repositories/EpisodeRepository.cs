@@ -210,5 +210,31 @@ namespace PodcastManagementSystem.Repositories
                 throw; // Re-throw to be handled by upper layers (controller/service)
             }
         }
+
+        /// READ: get all episodes for a given podcast
+        public async Task<List<Episode>> GetEpisodesByPodcastIdAsync(int podcastId)
+        {
+            try
+            {
+                _logger.LogInformation("Retrieving episodes for PodcastID {PodcastId}.", podcastId);
+
+                var episodes = await _context.Episodes
+                    .Where(e => e.PodcastID == podcastId)
+                    .Include(e => e.Podcast)   // Optional: include related Podcast entity if needed
+                    .AsNoTracking()            // Improve performance if you don't intend to update these entities
+                    .ToListAsync();
+
+                _logger.LogInformation("Retrieved {Count} episodes for PodcastID {PodcastId}.", episodes.Count, podcastId);
+
+                return episodes;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to retrieve episodes for PodcastID {PodcastId}.", podcastId);
+                throw;  // Propagate exception for upper layers to handle
+            }
+        }
+
+
     }
 }

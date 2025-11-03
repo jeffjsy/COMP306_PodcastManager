@@ -29,6 +29,7 @@ namespace PodcastManagementSystem.Interfaces
         // CRUD operations for a Podcast (the channel)
         Task AddPodcastAsync(Podcast podcast);
         Task<Podcast> GetPodcastByIdAsync(int podcastId);
+        Task EditPodcastAsync(int podcastId, string newTitle, string newDescription);
         Task DeletePodcastAsync(int podcastId);
 
         // CRUD operations for Episodes (the content)

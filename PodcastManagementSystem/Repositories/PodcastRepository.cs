@@ -126,6 +126,23 @@ namespace PodcastManagementSystem.Repositories
             return await _context.Podcasts.FindAsync(podcastId);
         }
 
+        public async Task EditPodcastAsync(int podcastId, string newTitle, string newDescription)
+        {
+            // Find the existing podcast
+            var podcast = await _context.Podcasts.FindAsync(podcastId);
+
+            if (podcast == null)
+                throw new Exception($"Podcast with ID {podcastId} not found.");
+
+            // Update the fields
+            podcast.Title = newTitle;
+            podcast.Description = newDescription;
+
+            // Save changes to the database
+            _context.Podcasts.Update(podcast);
+            await _context.SaveChangesAsync();
+        }
+
         public async Task DeletePodcastAsync(int podcastId)
         {
             // Find the podcast by ID

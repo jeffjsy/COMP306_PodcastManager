@@ -372,5 +372,51 @@ namespace PodcastManagementSystem.Controllers
              
             return RedirectToAction(nameof(Dashboard));
         }
+
+        // ---------------------------------------------------------------------
+        // 6. Edit PODCAST
+        // ---------------------------------------------------------------------
+
+        // GET: Podcaster/EditPodcast/{podcastId}
+        // Loads EditPodcast confirmation page
+        public async Task<IActionResult> EditPodcast(int podcastId)
+        {
+            var podcast = await _podcastRepository.GetPodcastByIdAsync(podcastId);
+
+            if (podcast == null)
+            {
+                return NotFound();
+            }
+
+            // Only allow the creator to edit their own podcast
+            var currentUserId = Guid.Parse(_userManager.GetUserId(User));
+            if (podcast.CreatorID != currentUserId)
+            {
+                return Forbid();
+            }
+
+            return View(podcast); // Passes the podcast to EditPodcast.cshtml
+        }
+
+
+        //// POST: Podcaster/EditPodcastConfirmed/{podcastId}
+        [HttpPost, ActionName("EditPodcastConfirmed")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditPodcastConfirmed(int podcastId, string title, string description)
+        {
+            var userId = Guid.Parse(_userManager.GetUserId(User));
+            var existingPodcast = await _podcastRepository.GetPodcastByIdAsync(podcastId);
+
+            if (existingPodcast == null || existingPodcast.CreatorID != userId)
+                return NotFound();
+
+            await _podcastRepository.EditPodcastAsync(podcastId, title, description);
+
+            return RedirectToAction(nameof(Dashboard));
+        }
+
+
+
+
     }
 }

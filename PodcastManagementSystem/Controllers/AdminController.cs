@@ -203,7 +203,7 @@ namespace PodcastManagementSystem.Controllers
             //    _context.Users.Remove(applicationUser);
             //}
 
-            var user = await _userManager.FindByIdAsync(id);
+            var user = await _userManager.FindByIdAsync(id.ToString());
 
             if (user == null)
             {

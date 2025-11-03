@@ -1,0 +1,73 @@
+﻿@model PodcastManagementSystem.Models.ApplicationUser
+
+@{
+    ViewData["Title"] = "UserDetails";
+}
+
+<div class="container py-4">
+    <h2 class="mb-4">User Details</h2>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body">
+            <dl class="row gy-3">
+                <dt class="col-sm-3 fw-semibold text-secondary">
+                    @Html.DisplayNameFor(model => model.Role)
+                </dt>
+                <dd class="col-sm-9">
+                    @Html.DisplayFor(model => model.Role)
+                </dd>
+
+                <dt class="col-sm-3 fw-semibold text-secondary">
+                    @Html.DisplayNameFor(model => model.UserName)
+                </dt>
+                <dd class="col-sm-9">
+                    @Html.DisplayFor(model => model.UserName)
+                </dd>
+
+                <dt class="col-sm-3 fw-semibold text-secondary">
+                    @Html.DisplayNameFor(model => model.Email)
+                </dt>
+                <dd class="col-sm-9">
+                    @Html.DisplayFor(model => model.Email)
+                </dd>
+
+                <dt class="col-sm-3 fw-semibold text-secondary">
+                    @Html.DisplayNameFor(model => model.EmailConfirmed)
+                </dt>
+                <dd class="col-sm-9">
+                    @Html.DisplayFor(model => model.EmailConfirmed)
+                </dd>
+
+                <dt class="col-sm-3 fw-semibold text-secondary">
+                    @Html.DisplayNameFor(model => model.PhoneNumber)
+                </dt>
+                <dd class="col-sm-9">
+                    @Html.DisplayFor(model => model.PhoneNumber)
+                </dd>
+
+                <dt class="col-sm-3 fw-semibold text-secondary">
+                    @Html.DisplayNameFor(model => model.PhoneNumberConfirmed)
+                </dt>
+                <dd class="col-sm-9">
+                    @Html.DisplayFor(model => model.PhoneNumberConfirmed)
+                </dd>
+
+                <dt class="col-sm-3 fw-semibold text-secondary">
+                    @Html.DisplayNameFor(model => model.TwoFactorEnabled)
+                </dt>
+                <dd class="col-sm-9">
+                    @Html.DisplayFor(model => model.TwoFactorEnabled)
+                </dd>
+
+                <dt class="col-sm-3 fw-semibold text-secondary">
+                    @Html.DisplayNameFor(model => model.AccessFailedCount)
+                </dt>
+                <dd class="col-sm-9">
+                    @Html.DisplayFor(model => model.AccessFailedCount)
+                </dd>
+            </dl>
+        </div>
+    </div>
+
+    <div> <a asp-action="UserEdit" asp-route-id="@Model?.Id">Edit</a> | <a asp-action="UserManagement">Back to List</a> </div>
+</div>

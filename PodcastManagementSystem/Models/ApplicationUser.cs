@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using System;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace PodcastManagementSystem.Models
 {
@@ -15,5 +17,9 @@ namespace PodcastManagementSystem.Models
         public UserRole Role { get; set; }
         public List<Subscription> Subscriptions { get; set; } = new(); // Navigation
 
+        [NotMapped]
+        [Required]
+        [DataType(DataType.Password)]
+        public string Password { get; set; }
     }
 }

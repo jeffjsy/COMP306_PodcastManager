@@ -14,7 +14,6 @@ using Microsoft.AspNetCore.Http;
 
 namespace PodcastManagementSystem.Controllers
 {
-    // 🛡️ SECURITY: Only users assigned the "Podcaster" role can access this controller.
     [Authorize(Roles = "Podcaster")]
     public class PodcasterController : Controller
     {

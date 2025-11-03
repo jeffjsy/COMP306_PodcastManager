@@ -152,5 +152,14 @@ namespace PodcastManagementSystem.Repositories
            
             return podcastId;
         }
+
+        public async Task<List<Episode>> GetEpisodesByPodcastIdAsync(int podcastId)
+        {
+            return await _context.Episodes
+                .Where(e => e.PodcastID == podcastId)
+                .OrderByDescending(e => e.ReleaseDate)
+                .ToListAsync();
+        }
+
     }
 }

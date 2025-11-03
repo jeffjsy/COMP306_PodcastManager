@@ -1,61 +1,52 @@
 ﻿using Amazon.DynamoDBv2.DataModel;
-using Amazon.DynamoDBv2.DocumentModel;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using PodcastManagementSystem.Data;
 using PodcastManagementSystem.Interfaces;
-using PodcastManagementSystem.Models;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+using PodcastManagementSystem.Models; 
 
-namespace PodcastManagementSystem.Repositories
+public class DynamoDbCommentRepository : ICommentRepository
 {
-    public class CommentRepository : ICommentRepository
+    private readonly IDynamoDBContext _dynamoDbContext;
+
+    public DynamoDbCommentRepository(IDynamoDBContext dynamoDbContext)
     {
-        private readonly ApplicationDbContext _context;
+        _dynamoDbContext = dynamoDbContext;
+    }
 
-        public CommentRepository(ApplicationDbContext context)
-        {
-            _context = context;
-        }
+    // --- CREATE ---
+    public async Task AddCommentAsync(Comment comment)
+    {
+        // SaveAsync handles the insertion of a new item based on the keys defined in the Comment model.
+        await _dynamoDbContext.SaveAsync(comment);
+    }
 
-        // 1. Add comments
-        public async Task AddCommentAsync(Comment comment)
-        {
-            _context.Comments.Add(comment);
-            await _context.SaveChangesAsync();
-        }
+    // --- READ (Get List) ---
+    public async Task<List<Comment>> GetCommentsByEpisodeIdAsync(int episodeId)
+    {
+        // Query DynamoDB by the Partition Key (EpisodeID).
+        var search = _dynamoDbContext.QueryAsync<Comment>(episodeId);
 
-        // 2. List comments (Eager load the User for display)
-        public async Task<IEnumerable<Comment>> GetCommentsByEpisodeIdAsync(int episodeId)
-        {
-            return await _context.Comments
-                .Include(c => c.User) // Necessary to display the username with the comment
-                .Where(c => c.EpisodeID == episodeId)
-                .OrderByDescending(c => c.TimeStamp) // Newest first
-                .ToListAsync();
-        }
+        // Load all results into a list.
+        var comments = await search.GetRemainingAsync();
 
-        // 3. Get comment by ID for security/edit check
-        public async Task<Comment> GetCommentByIdAsync(int commentId)
-        {
-            return await _context.Comments
-                .Include(c => c.User)
-                .FirstOrDefaultAsync(c => c.CommentID == commentId);
-        }
+        return comments;
+    }
 
-        // 3. Update comments (Uses the critical update technique)
-        public async Task UpdateCommentAsync(Comment comment)
-        {
-            _context.Entry(comment).State = EntityState.Modified;
-            await _context.SaveChangesAsync();
-        }
+    // --- READ (Get Single) ---
+    public async Task<Comment> GetCommentByIdAsync(int episodeId, Guid commentId)
+    {
+        return await _dynamoDbContext.LoadAsync<Comment>(episodeId, commentId);
+    }
 
-        //  Delete comments
-        public async Task DeleteCommentAsync(Comment comment)
-        {
-            _context.Comments.Remove(comment);
-            await _context.SaveChangesAsync();
-        }
+    // --- UPDATE ---
+    public async Task UpdateCommentAsync(Comment comment)
+    {
+        // SaveAsync will overwrite the existing item, using the primary keys for identification.
+        await _dynamoDbContext.SaveAsync(comment);
+    }
+
+    // --- DELETE ---
+    public async Task DeleteCommentAsync(Comment comment)
+    {
+        // DeleteAsync uses the keys (EpisodeID and CommentID) from the object to remove the item.
+        await _dynamoDbContext.DeleteAsync(comment);
     }
 }

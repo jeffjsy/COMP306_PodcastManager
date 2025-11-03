@@ -24,5 +24,7 @@ namespace PodcastManagementSystem.Interfaces
 
         // Gets the parent ID needed for redirection after deletion
         Task<int> GetPodcastIdForEpisodeAsync(int episodeId);
+
+        Task<List<Episode>> GetEpisodesByPodcastIdAsync(int podcastId);
     }
 }

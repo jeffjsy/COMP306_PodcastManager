@@ -1,0 +1,60 @@
+﻿@* File: Views/Podcaster/EpisodeStats.cshtml *@
+@model PodcastManagementSystem.Models.ViewModels.EpisodeStatsViewModel
+
+@{
+    ViewData["Title"] = $"Analytics: {Model.PodcastTitle}";
+}
+
+<h2 class="text-primary mt-4 mb-3">📈 Analytics: @Model.PodcastTitle</h2>
+<p class="text-muted">Aggregated statistics powered by DynamoDB.</p>
+<hr />
+
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-light">
+                <h4 class="mb-0"><i class="bi bi-trophy me-2"></i> Top Episodes by Views</h4>
+            </div>
+            <div class="card-body">
+                @if (Model.TopEpisodes == null || !Model.TopEpisodes.Any())
+                {
+                    <div class="alert alert-warning" role="alert">
+                        No summary data available yet. Please check back later!
+                    </div>
+                }
+                else
+                {
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th scope="col">#</th>
+                                <th scope="col">Episode Title</th>
+                                <th scope="col" class="text-end">View Count</th>
+                                <th scope="col" class="text-end">Comment Count</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{
+                                var rank = 1;
+                            }
+                            @foreach (var episode in Model.TopEpisodes)
+                            {
+                                <tr>
+                                    <th scope="row">@rank</th>
+                                    <td>@episode.EpisodeTitle</td>
+                                    <td class="text-end">@episode.ViewCount.ToString("N0")</td>
+                                    <td class="text-end">@episode.CommentCount.ToString("N0")</td>
+                                </tr>
+                                rank++;
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<a asp-controller="Podcaster" asp-action="Dashboard" class="btn btn-secondary mt-3">
+    <i class="bi bi-arrow-left-circle me-1"></i> Back to Dashboard
+</a>

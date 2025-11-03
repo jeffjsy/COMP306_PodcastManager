@@ -15,18 +15,21 @@ namespace PodcastManagementSystem.Controllers
         private readonly IEpisodeRepository _episodeRepository;
         private readonly ICommentRepository _commentRepository;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IAnalyticsRepository _analyticsRepository;
 
         public ListenerViewerController(
             IPodcastRepository podcastRepository, 
             ICommentRepository commentRepository, 
             IEpisodeRepository episodeRepository,
-            UserManager<ApplicationUser> userManager)
+            UserManager<ApplicationUser> userManager,
+            IAnalyticsRepository analyticsRepository)
 
         {
             _podcastRepository = podcastRepository;
             _commentRepository = commentRepository;
             _episodeRepository = episodeRepository;
             _userManager = userManager;
+            _analyticsRepository = analyticsRepository;
         }
 
         // ---------------------------------------------------------------------
@@ -72,7 +75,7 @@ namespace PodcastManagementSystem.Controllers
             return View(viewModel); 
         }
 
-        // GET: /ListenerViewer/ViewEpisode/{episodeId}
+        // File Location: Controllers/ListenerViewerController.cs
         public async Task<IActionResult> ViewEpisode(int episodeId)
         {
             // Fetch the single episode, including the Podcast (Channel) details
@@ -84,26 +87,53 @@ namespace PodcastManagementSystem.Controllers
                 return RedirectToAction(nameof(Index)); // Or a suitable error page
             }
 
-            // Fetch the comments for this episode, including the user details for display
-            // Make sure your repository method includes ApplicationUser (User) data!
+            // Analytics 
+            Guid? userId = null;
+            if (User.Identity.IsAuthenticated)
+            {
+                userId = Guid.Parse(_userManager.GetUserId(User));
+            }
+            var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+            _ = _analyticsRepository.RecordViewAsync(episodeId, userId, ipAddress);
+            await _analyticsRepository.LogEpisodeViewAsync(episode.PodcastID, episode.EpisodeID);
+
+            // 1. Fetch the comments for this episode from DynamoDB
             var comments = await _commentRepository.GetCommentsByEpisodeIdAsync(episodeId);
 
+            // 2. 🌟 NEW: Manually fetch ApplicationUser details for each comment 🌟
+            // DynamoDB doesn't automatically join with the SQL Identity database.
+            if (comments != null)
+            {
+                foreach (var comment in comments)
+                {
+                    comment.User = await _userManager.FindByIdAsync(comment.UserID.ToString());
+
+                    // Handle case where user might be deleted (optional)
+                    if (comment.User == null)
+                    {
+                        // Set a default or anonymous user placeholder if the user doesn't exist
+                        comment.User = new ApplicationUser { UserName = "[Deleted User]" };
+                    }
+                }
+            }
+
+            // 3. Prepare and return the View Model
             var model = new EpisodeCommentsViewModel
             {
                 Episode = episode,
                 EpisodeID = episodeId,
-                Comments = comments.OrderBy(c => c.TimeStamp).ToList()
+                Comments = comments?.OrderBy(c => c.TimeStamp).ToList() ?? new List<Comment>()
             };
 
             return View(model); // This renders the ViewEpisode.cshtml
         }
 
         // ---------------------------------------------------------------------
-        // 2. ADD & EDIT & DELETE COMMENTS
+        // 3. ADD & EDIT & DELETE COMMENTS
         // ---------------------------------------------------------------------
 
         [HttpPost]
-        [Authorize] // Only logged-in users can post comments
+        [Authorize]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> AddComment(int episodeId, string commentText)
         {
@@ -114,10 +144,17 @@ namespace PodcastManagementSystem.Controllers
                 return RedirectToAction(nameof(ViewEpisode), new { episodeId = episodeId });
             }
 
+            // Get episode data to find the PodcastID
+            var episode = await _episodeRepository.GetEpisodeByIdAsync(episodeId);
+            if (episode == null)
+            {
+                TempData["Error"] = "Episode not found.";
+                return RedirectToAction(nameof(Index)); 
+            }
+            int podcastId = episode.PodcastID;
+
             // 2. Get the current logged-in user's ID and convert it to Guid
             var userIdString = _userManager.GetUserId(User);
-
-            // Safety check for Guid parsing, though Authorize should ensure ID exists
             if (userIdString == null || !Guid.TryParse(userIdString, out Guid userGuid))
             {
                 TempData["Error"] = "User identity could not be resolved.";
@@ -127,23 +164,28 @@ namespace PodcastManagementSystem.Controllers
             // 3. Create the new Comment entity
             var comment = new Comment
             {
+                CommentID = Guid.NewGuid(),
                 EpisodeID = episodeId,
-                UserID = userGuid, 
-                Text = commentText.Trim(), // Trim whitespace
-                TimeStamp = DateTime.UtcNow // Use UTC for consistency
+                PodcastID = podcastId, 
+                UserID = userGuid,
+                Text = commentText.Trim(),
+                TimeStamp = DateTime.UtcNow
             };
 
-            // 4. Save the comment
+            // 4. Save the comment and update analytics
             try
             {
                 await _commentRepository.AddCommentAsync(comment);
+
+                // Update analytics page with comment count
+                await _analyticsRepository.UpdateCommentCountAsync(podcastId, episodeId, 1);
+
                 TempData["SuccessMessage"] = "Your comment has been posted.";
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 TempData["Error"] = "Failed to post comment due to a database error.";
             }
-
 
             //Redirect to the episode page to reload and display the new comment
             return RedirectToAction(nameof(ViewEpisode), new { episodeId = episodeId });
@@ -153,7 +195,8 @@ namespace PodcastManagementSystem.Controllers
         [HttpPost]
         [Authorize]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> EditComment(int commentId, int episodeId, string updatedText)
+        // 🌟 CHANGE 1: Accept commentId as a string to handle the full GUID value 🌟
+        public async Task<IActionResult> EditComment(string commentId, int episodeId, string updatedText)
         {
             // 1. Input and Authorization Validation
             if (string.IsNullOrWhiteSpace(updatedText))
@@ -162,8 +205,17 @@ namespace PodcastManagementSystem.Controllers
                 return RedirectToAction(nameof(ViewEpisode), new { episodeId = episodeId });
             }
 
+            // 🌟 CHANGE 2: Safely parse the commentId string into a Guid 🌟
+            if (!Guid.TryParse(commentId, out Guid commentGuid))
+            {
+                TempData["Error"] = "Invalid comment identifier format.";
+                return RedirectToAction(nameof(ViewEpisode), new { episodeId = episodeId });
+            }
+
             // Ensure the user owns the comment and it's within the 24-hour window
-            var comment = await _commentRepository.GetCommentByIdAsync(commentId);
+            // 🌟 CHANGE 3: Use the correctly parsed Guid for the repository lookup 🌟
+            var comment = await _commentRepository.GetCommentByIdAsync(episodeId, commentGuid);
+
             var userIdString = _userManager.GetUserId(User);
             Guid currentUserIdGuid;
 
@@ -187,7 +239,7 @@ namespace PodcastManagementSystem.Controllers
             // 3. Save Changes
             try
             {
-                await _commentRepository.UpdateCommentAsync(comment); 
+                await _commentRepository.UpdateCommentAsync(comment);
                 TempData["SuccessMessage"] = "Comment updated successfully!";
             }
             catch (Exception)
@@ -202,10 +254,16 @@ namespace PodcastManagementSystem.Controllers
         [HttpPost]
         [Authorize]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteComment(int commentId, int episodeId)
+        public async Task<IActionResult> DeleteComment(string commentId, int episodeId)
         {
-            // 1. Fetch the comment
-            var comment = await _commentRepository.GetCommentByIdAsync(commentId);
+            // 1. Input Validation and Parsing
+            if (!Guid.TryParse(commentId, out Guid commentGuid))
+            {
+                TempData["Error"] = "Invalid comment ID format.";
+                return RedirectToAction(nameof(ViewEpisode), new { episodeId });
+            }
+
+            var comment = await _commentRepository.GetCommentByIdAsync(episodeId, commentGuid);
             var userIdString = _userManager.GetUserId(User);
             Guid currentUserIdGuid;
 
@@ -222,10 +280,14 @@ namespace PodcastManagementSystem.Controllers
                 return RedirectToAction(nameof(ViewEpisode), new { episodeId = episodeId });
             }
 
-            // 3. Delete the Comment
+            // 3. Delete the Comment and update analytics
             try
             {
                 await _commentRepository.DeleteCommentAsync(comment);
+
+                // Update Analytics page by removing comment count
+                await _analyticsRepository.UpdateCommentCountAsync(comment.PodcastID, episodeId, -1);
+
                 TempData["SuccessMessage"] = "Comment deleted successfully.";
             }
             catch (Exception)
@@ -233,8 +295,49 @@ namespace PodcastManagementSystem.Controllers
                 TempData["Error"] = "Failed to delete comment due to a server error.";
             }
 
-            // 4. Redirect
             return RedirectToAction(nameof(ViewEpisode), new { episodeId = episodeId });
+        }
+
+        // ---------------------------------------------------------------------
+        // 4. ANALYTICS
+        // ---------------------------------------------------------------------
+
+        [Authorize(Roles = "Podcaster, Admin")] // Restrict access
+        public async Task<IActionResult> EpisodeStats(int podcastId) // Pass the podcastId to report on
+        {
+            // 1. Get Summary Data from DynamoDB
+            var summaries = await _analyticsRepository.GetEpisodeSummariesByPodcastIdAsync(podcastId);
+
+            // 2. Fetch RDBMS data (Episode Titles, Podcast Title)
+            // You'll need a way to get the Podcast Title and the Episode Titles based on the IDs
+            var podcast = await _podcastRepository.GetPodcastByIdAsync(podcastId);
+            var allEpisodes = await _episodeRepository.GetEpisodesByPodcastIdAsync(podcastId);
+
+            var episodeMap = allEpisodes.ToDictionary(e => e.EpisodeID, e => e.Title);
+
+            // 3. Populate RDBMS data into the DynamoDB objects and sort
+            foreach (var summary in summaries)
+            {
+                summary.PodcastTitle = podcast.Title;
+                if (episodeMap.ContainsKey(summary.EpisodeID))
+                {
+                    summary.EpisodeTitle = episodeMap[summary.EpisodeID];
+                }
+            }
+
+            // 4. Sort and select Top 10 (or all)
+            var topEpisodes = summaries
+                                .OrderByDescending(s => s.ViewCount) // Sort by the aggregated metric
+                                .Take(10)
+                                .ToList();
+
+            var model = new EpisodeStatsViewModel
+            {
+                PodcastTitle = podcast.Title,
+                TopEpisodes = topEpisodes
+            };
+
+            return View(model);
         }
     }
 }

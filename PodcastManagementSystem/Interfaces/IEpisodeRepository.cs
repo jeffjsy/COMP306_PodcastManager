@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using PodcastManagementSystem.Models;
+using PodcastManagementSystem.Models.ViewModels;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -8,7 +9,7 @@ namespace PodcastManagementSystem.Interfaces
     public interface IEpisodeRepository
     {
         // CREATE: Add a new episode to the database
-        Task AddEpisodeAsync(Episode episode);
+        Task<Episode> AddEpisodeAsync(AddEpisodeViewModel episode);
 
         // READ: Get a specific episode by its ID
         Task<Episode> GetEpisodeByIdAsync(int episodeId);
@@ -24,5 +25,8 @@ namespace PodcastManagementSystem.Interfaces
 
         // Gets the parent ID needed for redirection after deletion
         Task<int> GetPodcastIdForEpisodeAsync(int episodeId);
+
+        //Get all episodes
+        Task<IEnumerable<Episode>> GetAllEpisodesAsync();
     }
 }

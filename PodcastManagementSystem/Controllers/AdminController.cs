@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using PodcastManagementSystem.Data;
+using PodcastManagementSystem.Interfaces;
 using PodcastManagementSystem.Models;
 using System;
 using System.Collections.Generic;
@@ -15,11 +16,13 @@ namespace PodcastManagementSystem.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IEpisodeRepository _episodeRepository;
 
-        public AdminController(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
+        public AdminController(ApplicationDbContext context, UserManager<ApplicationUser> userManager, IEpisodeRepository episodeRepository)
         {
             _context = context;
             _userManager = userManager;
+            _episodeRepository = episodeRepository;
         }
 
         // GET: Admin
@@ -319,6 +322,10 @@ namespace PodcastManagementSystem.Controllers
         /////////////////////////////////////////////////////////
         /// episodeCreationApprovalQueue
         /////////////////////////////////////////////////////////
+        public async Task<IActionResult> EpisodeCreationApprovalQueue()
+        {
+            return View(await _episodeRepository.GetAllEpisodesAsync());
+        }
 
 
         /////////////////////////////////////////////////////////

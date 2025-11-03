@@ -6,11 +6,13 @@ using PodcastManagementSystem.Controllers;
 using PodcastManagementSystem.Data;
 using PodcastManagementSystem.Interfaces;
 using PodcastManagementSystem.Models;
+using PodcastManagementSystem.Models.ViewModels;
 using PodcastManagementSystem.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using NAudio;
 
 namespace PodcastManagementSystem.Repositories
 {
@@ -37,11 +39,44 @@ namespace PodcastManagementSystem.Repositories
         }
 
         // CREATE
-        public async Task AddEpisodeAsync(Episode episode)
+        public async Task<Episode> AddEpisodeAsync(AddEpisodeViewModel model)
         {
+            // 1. Upload the file to S3
+            var fileKey = $"episodes/{model.PodcastID}/{Guid.NewGuid()}-{model.AudioFile.FileName}";
+            string audioFileUrl = await _s3Service.UploadFileAsync(model.AudioFile, fileKey);
+
+            if (string.IsNullOrEmpty(audioFileUrl))
+            {
+                _logger.LogError("S3 service returned a NULL or empty URL for file key {Key}.", fileKey);
+                throw new InvalidOperationException("Failed to upload audio file to storage.");
+            }
+
+            _logger.LogInformation("S3 upload successful (URL: {Url}). Saving episode metadata.", audioFileUrl);
+
+            // 2. extract durationMinutes from model
+            using var audioStream = model.AudioFile.OpenReadStream();
+            using var reader = new NAudio.Wave.Mp3FileReader(audioStream);
+            model.DurationMinutes = (Convert.ToInt32(reader.TotalTime.TotalMinutes) == 0) ? 1 : Convert.ToInt32(reader.TotalTime.TotalMinutes);
+
+
+            // 3. Create episode entity
+            var episode = new Episode
+            {
+                PodcastID = model.PodcastID,
+                Title = model.Title,
+                Description = model.Description,
+                ReleaseDate = DateTime.UtcNow,
+                AudioFileURL = audioFileUrl,
+                DurationMinutes = model.DurationMinutes
+            };
+
+            // 3. Save to database
             _context.Episodes.Add(episode);
             await _context.SaveChangesAsync();
+
+            return episode;
         }
+
 
         // READ (Single Episode)
         public async Task<Episode> GetEpisodeByIdAsync(int episodeId)
@@ -151,6 +186,29 @@ namespace PodcastManagementSystem.Repositories
 
            
             return podcastId;
+        }
+
+        // READ (All Episodes)
+        public async Task<IEnumerable<Episode>> GetAllEpisodesAsync()
+        {
+            try
+            {
+                _logger.LogInformation("TRACE: Retrieving all episodes from the database.");
+
+                var episodes = await _context.Episodes
+                    .Include(e => e.Podcast) // Include related Podcast info
+                    .AsNoTracking()          // Improves performance for read-only operations
+                    .ToListAsync();
+
+                _logger.LogInformation($"TRACE: Retrieved {episodes.Count} episodes successfully.");
+
+                return episodes;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "ERROR: Failed to retrieve all episodes.");
+                throw; // Re-throw to be handled by upper layers (controller/service)
+            }
         }
     }
 }

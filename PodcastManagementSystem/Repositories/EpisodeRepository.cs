@@ -102,37 +102,101 @@ namespace PodcastManagementSystem.Repositories
 
         }
 
-        // DELETE
-        public async Task DeleteEpisodeByIdAsync(int id) 
+        //Update (Approve)
+        //public async Task ApproveEpisodeAsync(Episode episode)
+        //{
+        //    _logger.LogInformation("TRACE 5: Inside ApproveEpisodeAsync. Updating CreationOfEpisodeApproved to true.");
+
+        //    // Set the CreationOfEpisodeApproved field to true
+        //    episode.CreationOfEpisodeApproved = true;
+
+        //    // Mark only the CreationOfEpisodeApproved property as modified
+        //    _context.Entry(episode).Property(e => e.CreationOfEpisodeApproved).IsModified = true;
+
+        //    await _context.SaveChangesAsync();
+
+        //    _logger.LogInformation("TRACE 6: SaveChanges() completed.");
+        //}
+        public async Task ApproveEpisodeByIdAsync(int episodeId)
         {
+            _logger.LogInformation("TRACE 5: Inside ApproveEpisodeByIdAsync. Updating CreationOfEpisodeApproved to true.");
+
+            // Find the episode by its ID
+            var existingEpisode = await _context.Episodes
+                .FirstOrDefaultAsync(e => e.EpisodeID == episodeId); // Using the passed episodeId to fetch the episode
+
+            if (existingEpisode != null)
+            {
+                existingEpisode.CreationOfEpisodeApproved = true;
+
+                // Mark only the specific property as modified
+                _context.Entry(existingEpisode).Property(e => e.CreationOfEpisodeApproved).IsModified = true;
+
+                // Save changes to the database
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("TRACE 6: SaveChanges() completed.");
+            }
+            else
+            {
+                _logger.LogError("Episode with ID {episodeId} not found.", episodeId);
+            }
+        }
+
+
+
+        // DELETE
+        public async Task DeleteEpisodeByIdAsync(int id)
+        {
+            _logger.LogInformation("TRACE 5: Inside DeleteEpisodeByIdAsync. Attempting to delete episode with ID {episodeId}.", id);
+
             var episode = await _context.Episodes
                 .FirstOrDefaultAsync(e => e.EpisodeID == id);
 
-            DeleteObjectResponse s3_episodeDeleteion_result = null;
-
             if (episode != null)
             {
-                // 1. S3 Deletion
-
-                if (!string.IsNullOrEmpty(episode.AudioFileURL))
+                try
                 {
-                    var uri = new Uri(episode.AudioFileURL);
-                    var episodeKey = uri.AbsolutePath.TrimStart('/');
-
-                    var deleteRequest = new Amazon.S3.Model.DeleteObjectRequest
+                    // 1. S3 Deletion (Audio file)
+                    if (!string.IsNullOrEmpty(episode.AudioFileURL))
                     {
-                        BucketName = _bucketName,
-                        Key = episodeKey 
-                    };
-                     
-                    s3_episodeDeleteion_result = await _s3Client.DeleteObjectAsync(deleteRequest);
-                }
+                        var uri = new Uri(episode.AudioFileURL);
+                        var episodeKey = uri.AbsolutePath.TrimStart('/');
 
-                // 2. DB Deletion
-                _context.Episodes.Remove(episode);
-                await _context.SaveChangesAsync();
+                        var deleteRequest = new Amazon.S3.Model.DeleteObjectRequest
+                        {
+                            BucketName = _bucketName,
+                            Key = episodeKey
+                        };
+
+                        // Deleting the episode file from S3
+                        var s3_episodeDeletionResult = await _s3Client.DeleteObjectAsync(deleteRequest);
+
+                        if (s3_episodeDeletionResult.HttpStatusCode == System.Net.HttpStatusCode.NoContent)
+                        {
+                            _logger.LogInformation("TRACE 6: Successfully deleted episode file from S3. Key: {episodeKey}", episodeKey);
+                        }
+                        else
+                        {
+                            _logger.LogWarning("TRACE 6: S3 deletion failed for episode with ID {episodeId}. Status: {StatusCode}", id, s3_episodeDeletionResult.HttpStatusCode);
+                        }
+                    }
+
+                    // 2. DB Deletion
+                    _context.Episodes.Remove(episode);
+                    await _context.SaveChangesAsync();
+                    _logger.LogInformation("TRACE 7: Successfully deleted episode with ID {episodeId} from the database.", id);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "ERROR: An error occurred while deleting the episode with ID {episodeId}.", id);
+                }
+            }
+            else
+            {
+                _logger.LogWarning("WARNING: Episode with ID {episodeId} not found in the database.", id);
             }
         }
+
 
         public async Task DeleteAllEpisodesByPodcastIdAsync(int podcastId)
         {
@@ -235,6 +299,14 @@ namespace PodcastManagementSystem.Repositories
             }
         }
 
+        public async Task<IEnumerable<Episode>> GetAllUnapprovedEpisodesAsync()
+        {
+            // This retrieves all episodes where the CreationOfEpisodeApproved col = 0. or false
+            return await _context.Episodes
+                .Where(e => e.CreationOfEpisodeApproved == false)
+                .OrderBy(e => e.ReleaseDate) // Order by oldest release date
+                .ToListAsync();
+        }
 
     }
 }

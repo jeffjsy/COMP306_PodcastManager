@@ -13,8 +13,15 @@
 <table class="table">
     <thead>
         <tr>
+            <th> Approve Or Deny (Delete)</th>
+            <th>
+                @Html.DisplayNameFor(model => model.EpisodeID)
+            </th>
             <th>
                 @Html.DisplayNameFor(model => model.Title)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Podcast)
             </th>
             <th>
                 @Html.DisplayNameFor(model => model.Description)
@@ -25,27 +32,51 @@
             <th>
                 @Html.DisplayNameFor(model => model.DurationMinutes)
             </th>
-            <th>
+            @* <th>
                 @Html.DisplayNameFor(model => model.PlayCount)
             </th>
             <th>
                 @Html.DisplayNameFor(model => model.AudioFileURL)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Podcast)
-            </th>
-            <th>
+            </th> *@
+            @* <th>
                 @Html.DisplayNameFor(model => model.CreationOfEpisodeApproved)
-            </th>
-            <th></th>
+            </th> *@
+            
         </tr>
     </thead>
     <tbody>
 @foreach (var item in Model) {
         <tr>
+                <td>
+                    <div class="d-flex gap-2">
+                        <form asp-controller="admin" asp-action="ApproveEpisodeCreation" method="post">
+                            <input type="hidden" name="episodeId" value="@item.EpisodeID" />
+                            <button type="submit" class="btn btn-success">
+                                Approve
+                            </button>
+                        </form>
+
+                        <form asp-controller="admin" asp-action="DenyEpisodeCreation" method="post">
+                            <input type="hidden" name="episodeId" value="@item.EpisodeID" />
+                            <button type="submit" class="btn btn-danger">
+                                Deny
+                            </button>
+                        </form>
+                    </div>
+
+                    @* <a asp-action="Edit" asp-route-id="@item.EpisodeID">Edit</a> |
+                <a asp-action="Details" asp-route-id="@item.EpisodeID">Details</a> |
+                <a asp-action="Delete" asp-route-id="@item.EpisodeID">Delete</a> *@
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.EpisodeID)
+                </td>
             <td>
                 @Html.DisplayFor(modelItem => item.Title)
             </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.Podcast.Title)
+                </td>
             <td>
                 @Html.DisplayFor(modelItem => item.Description)
             </td>
@@ -55,23 +86,17 @@
             <td>
                 @Html.DisplayFor(modelItem => item.DurationMinutes)
             </td>
-            <td>
+            @* <td>
                 @Html.DisplayFor(modelItem => item.PlayCount)
             </td>
             <td>
                 @Html.DisplayFor(modelItem => item.AudioFileURL)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Podcast.Title)
-            </td>
-            <td>
+            </td> *@
+            
+            @* <td>
                 @Html.DisplayFor(modelItem => item.CreationOfEpisodeApproved)
-            </td>
-            <td>
-                <a asp-action="Edit" asp-route-id="@item.EpisodeID">Edit</a> |
-                <a asp-action="Details" asp-route-id="@item.EpisodeID">Details</a> |
-                <a asp-action="Delete" asp-route-id="@item.EpisodeID">Delete</a>
-            </td>
+            </td> *@
+            
         </tr>
 }
     </tbody>

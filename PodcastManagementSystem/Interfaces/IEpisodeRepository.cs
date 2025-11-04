@@ -19,6 +19,8 @@ namespace PodcastManagementSystem.Interfaces
 
         // UPDATE: Update an existing episode's metadata
         Task UpdateEpisodeAsync(Episode episode);
+        // UPDATE: Update an existing episode's CreationOfEpisodeApproved
+        Task ApproveEpisodeByIdAsync(int episodeId);
 
         // DELETE: Remove an episode from the database
         Task DeleteEpisodeByIdAsync(int episodeId);
@@ -30,5 +32,7 @@ namespace PodcastManagementSystem.Interfaces
         Task<int> GetPodcastIdForEpisodeAsync(int episodeId);
 
         Task<List<Episode>> GetEpisodesByPodcastIdAsync(int podcastId);
+        // Get all unapproved episodes for podcast approval queue
+        Task<IEnumerable<Episode>> GetAllUnapprovedEpisodesAsync();
     }
 }

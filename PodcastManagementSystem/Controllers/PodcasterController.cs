@@ -161,76 +161,32 @@ namespace PodcastManagementSystem.Controllers
         [RequestSizeLimit(200_000_000)]
         public async Task<IActionResult> AddEpisode(AddEpisodeViewModel model)
         {
-
             if (!ModelState.IsValid || model.AudioFile == null)
             {
-                _logger.LogWarning("Episode upload failed validation for PodcastID: {PodcastId}. Errors: {@Errors}",
-                    model.PodcastID, ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage));
-
                 var podcast = await _podcastRepository.GetPodcastByIdAsync(model.PodcastID);
                 ViewData["PodcastTitle"] = podcast?.Title;
-
-                // If this returns, check validation messages in the browser
                 return View(model);
             }
 
-            _logger.LogInformation("Validation passed. Attempting S3 upload for episode '{Title}' on podcast {Id}.",
-                model.Title, model.PodcastID);
-
-            // 1. Upload the file to S3
-            var fileKey = $"episodes/{model.PodcastID}/{Guid.NewGuid()}-{model.AudioFile.FileName}";
-            string audioFileUrl = null;
-
-            // Use a try-catch block to specifically log S3 exceptions
             try
             {
-                audioFileUrl = await _s3Service.UploadFileAsync(model.AudioFile, fileKey);
+                var episode = await _episodeRepository.AddEpisodeAsync(model);
+
+                _logger.LogInformation("Episode '{Title}' successfully published.", episode.Title);
+                TempData["SuccessMessage"] = $"Episode '{episode.Title}' published successfully!";
+                return RedirectToAction(nameof(ManagePodcast), new { podcastId = model.PodcastID });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "S3 Upload FAILED for file key {Key}. Check AWS credentials and bucket configuration.", fileKey);
-                ModelState.AddModelError("", "S3 service error: Could not upload file. Check server logs for details.");
+                _logger.LogError(ex, "Failed to add episode for PodcastID {PodcastId}.", model.PodcastID);
 
                 var podcast = await _podcastRepository.GetPodcastByIdAsync(model.PodcastID);
                 ViewData["PodcastTitle"] = podcast?.Title;
+                ModelState.AddModelError("", "An error occurred while uploading the episode. Please try again.");
                 return View(model);
             }
-
-            if (string.IsNullOrEmpty(audioFileUrl))
-            {
-                _logger.LogError("S3 service returned a NULL or empty URL for file key {Key}. Check S3 service return logic.", fileKey);
-                ModelState.AddModelError("", "Storage error: File upload resulted in an invalid URL.");
-
-                var podcast = await _podcastRepository.GetPodcastByIdAsync(model.PodcastID);
-                ViewData["PodcastTitle"] = podcast?.Title;
-                return View(model);
-            }
-
-            _logger.LogInformation("S3 upload successful (URL: {Url}). Saving episode metadata to database.", audioFileUrl);
-
-
-            // 2. Save metadata to the database
-            var episode = new Episode
-            {
-                PodcastID = model.PodcastID,
-                Title = model.Title,
-                Description = model.Description,
-                ReleaseDate = DateTime.UtcNow,
-                AudioFileURL = audioFileUrl,
-                DurationMinutes = model.DurationMinutes
-            };
-
-
-            // 3. Save the episode using the IEpisodeRepository
-            await _episodeRepository.AddEpisodeAsync(episode);
-
-            // 🌟 LOG POINT 5: Success
-            _logger.LogInformation("Episode '{Title}' successfully published and saved.", model.Title);
-
-            // 4. Redirect to the episode listing (ManagePodcast)
-            TempData["SuccessMessage"] = $"Episode '{episode.Title}' published successfully!";
-            return RedirectToAction(nameof(ManagePodcast), new { podcastId = model.PodcastID });
         }
+
 
         // ---------------------------------------------------------------------
         // 3.5. UPDATE EPISODE   

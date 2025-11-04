@@ -6,11 +6,13 @@ using PodcastManagementSystem.Controllers;
 using PodcastManagementSystem.Data;
 using PodcastManagementSystem.Interfaces;
 using PodcastManagementSystem.Models;
+using PodcastManagementSystem.Models.ViewModels;
 using PodcastManagementSystem.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using NAudio;
 
 namespace PodcastManagementSystem.Repositories
 {
@@ -35,11 +37,44 @@ namespace PodcastManagementSystem.Repositories
         }
 
         // CREATE
-        public async Task AddEpisodeAsync(Episode episode)
+        public async Task<Episode> AddEpisodeAsync(AddEpisodeViewModel model)
         {
+            // 1. Upload the file to S3
+            var fileKey = $"episodes/{model.PodcastID}/{Guid.NewGuid()}-{model.AudioFile.FileName}";
+            string audioFileUrl = await _s3Service.UploadFileAsync(model.AudioFile, fileKey);
+
+            if (string.IsNullOrEmpty(audioFileUrl))
+            {
+                _logger.LogError("S3 service returned a NULL or empty URL for file key {Key}.", fileKey);
+                throw new InvalidOperationException("Failed to upload audio file to storage.");
+            }
+
+            _logger.LogInformation("S3 upload successful (URL: {Url}). Saving episode metadata.", audioFileUrl);
+
+            // 2. extract durationMinutes from model
+            using var audioStream = model.AudioFile.OpenReadStream();
+            using var reader = new NAudio.Wave.Mp3FileReader(audioStream);
+            model.DurationMinutes = (Convert.ToInt32(reader.TotalTime.TotalMinutes) == 0) ? 1 : Convert.ToInt32(reader.TotalTime.TotalMinutes);
+
+
+            // 3. Create episode entity
+            var episode = new Episode
+            {
+                PodcastID = model.PodcastID,
+                Title = model.Title,
+                Description = model.Description,
+                ReleaseDate = DateTime.UtcNow,
+                AudioFileURL = audioFileUrl,
+                DurationMinutes = model.DurationMinutes
+            };
+
+            // 3. Save to database
             _context.Episodes.Add(episode);
             await _context.SaveChangesAsync();
+
+            return episode;
         }
+
 
         // READ (Single Episode)
         public async Task<Episode> GetEpisodeByIdAsync(int episodeId)
@@ -64,24 +99,62 @@ namespace PodcastManagementSystem.Repositories
 
         }
 
+        //Update (Approve)
+        //public async Task ApproveEpisodeAsync(Episode episode)
+        //{
+        //    _logger.LogInformation("TRACE 5: Inside ApproveEpisodeAsync. Updating CreationOfEpisodeApproved to true.");
+
+        //    // Set the CreationOfEpisodeApproved field to true
+        //    episode.CreationOfEpisodeApproved = true;
+
+        //    // Mark only the CreationOfEpisodeApproved property as modified
+        //    _context.Entry(episode).Property(e => e.CreationOfEpisodeApproved).IsModified = true;
+
+        //    await _context.SaveChangesAsync();
+
+        //    _logger.LogInformation("TRACE 6: SaveChanges() completed.");
+        //}
+        public async Task ApproveEpisodeByIdAsync(int episodeId)
+        {
+            _logger.LogInformation("TRACE 5: Inside ApproveEpisodeByIdAsync. Updating CreationOfEpisodeApproved to true.");
+
+            // Find the episode by its ID
+            var existingEpisode = await _context.Episodes
+                .FirstOrDefaultAsync(e => e.EpisodeID == episodeId); // Using the passed episodeId to fetch the episode
+
+            if (existingEpisode != null)
+            {
+                existingEpisode.CreationOfEpisodeApproved = true;
+
+                // Mark only the specific property as modified
+                _context.Entry(existingEpisode).Property(e => e.CreationOfEpisodeApproved).IsModified = true;
+
+                // Save changes to the database
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("TRACE 6: SaveChanges() completed.");
+            }
+            else
+            {
+                _logger.LogError("Episode with ID {episodeId} not found.", episodeId);
+            }
+        }
+
+
+
         // DELETE
         public async Task DeleteEpisodeByIdAsync(int id)
         {
+            _logger.LogInformation("TRACE 5: Inside DeleteEpisodeByIdAsync. Attempting to delete episode with ID {episodeId}.", id);
+
             var episode = await _context.Episodes
                 .FirstOrDefaultAsync(e => e.EpisodeID == id);
 
-            DeleteObjectResponse s3_episodeDeleteion_result = null;
-
             if (episode != null)
             {
-                // 1. S3 Deletion
-
-                if (!string.IsNullOrEmpty(episode.AudioFileURL))
+                try
                 {
-                    var uri = new Uri(episode.AudioFileURL);
-                    var episodeKey = uri.AbsolutePath.TrimStart('/');
-
-                    var deleteRequest = new Amazon.S3.Model.DeleteObjectRequest
+                    // 1. S3 Deletion (Audio file)
+                    if (!string.IsNullOrEmpty(episode.AudioFileURL))
                     {
                         BucketName = _bucketName,
                         Key = episodeKey
@@ -89,12 +162,44 @@ namespace PodcastManagementSystem.Repositories
 
                     s3_episodeDeleteion_result = await _s3Client.DeleteObjectAsync(deleteRequest);
                 }
+                        var uri = new Uri(episode.AudioFileURL);
+                        var episodeKey = uri.AbsolutePath.TrimStart('/');
 
-                // 2. DB Deletion
-                _context.Episodes.Remove(episode);
-                await _context.SaveChangesAsync();
+                        var deleteRequest = new Amazon.S3.Model.DeleteObjectRequest
+                        {
+                            BucketName = _bucketName,
+                            Key = episodeKey
+                        };
+
+                        // Deleting the episode file from S3
+                        var s3_episodeDeletionResult = await _s3Client.DeleteObjectAsync(deleteRequest);
+
+                        if (s3_episodeDeletionResult.HttpStatusCode == System.Net.HttpStatusCode.NoContent)
+                        {
+                            _logger.LogInformation("TRACE 6: Successfully deleted episode file from S3. Key: {episodeKey}", episodeKey);
+                        }
+                        else
+                        {
+                            _logger.LogWarning("TRACE 6: S3 deletion failed for episode with ID {episodeId}. Status: {StatusCode}", id, s3_episodeDeletionResult.HttpStatusCode);
+                        }
+                    }
+
+                    // 2. DB Deletion
+                    _context.Episodes.Remove(episode);
+                    await _context.SaveChangesAsync();
+                    _logger.LogInformation("TRACE 7: Successfully deleted episode with ID {episodeId} from the database.", id);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "ERROR: An error occurred while deleting the episode with ID {episodeId}.", id);
+                }
+            }
+            else
+            {
+                _logger.LogWarning("WARNING: Episode with ID {episodeId} not found in the database.", id);
             }
         }
+
 
         public async Task DeleteAllEpisodesByPodcastIdAsync(int podcastId)
         {
@@ -124,11 +229,59 @@ namespace PodcastManagementSystem.Repositories
             return podcastId;
         }
 
+        // READ (All Episodes)
+        public async Task<IEnumerable<Episode>> GetAllEpisodesAsync()
+        {
+            try
+            {
+                _logger.LogInformation("TRACE: Retrieving all episodes from the database.");
+
+                var episodes = await _context.Episodes
+                    .Include(e => e.Podcast) // Include related Podcast info
+                    .AsNoTracking()          // Improves performance for read-only operations
+                    .ToListAsync();
+
+                _logger.LogInformation($"TRACE: Retrieved {episodes.Count} episodes successfully.");
+
+                return episodes;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "ERROR: Failed to retrieve all episodes.");
+                throw; // Re-throw to be handled by upper layers (controller/service)
+            }
+        }
+
+        /// READ: get all episodes for a given podcast
         public async Task<List<Episode>> GetEpisodesByPodcastIdAsync(int podcastId)
         {
+            try
+            {
+                _logger.LogInformation("Retrieving episodes for PodcastID {PodcastId}.", podcastId);
+
+                var episodes = await _context.Episodes
+                    .Where(e => e.PodcastID == podcastId)
+                    .Include(e => e.Podcast)   // Optional: include related Podcast entity if needed
+                    .AsNoTracking()            // Improve performance if you don't intend to update these entities
+                    .ToListAsync();
+
+                _logger.LogInformation("Retrieved {Count} episodes for PodcastID {PodcastId}.", episodes.Count, podcastId);
+
+                return episodes;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to retrieve episodes for PodcastID {PodcastId}.", podcastId);
+                throw;  // Propagate exception for upper layers to handle
+            }
+        }
+
+        public async Task<IEnumerable<Episode>> GetAllUnapprovedEpisodesAsync()
+        {
+            // This retrieves all episodes where the CreationOfEpisodeApproved col = 0. or false
             return await _context.Episodes
-                .Where(e => e.PodcastID == podcastId)
-                .OrderByDescending(e => e.ReleaseDate)
+                .Where(e => e.CreationOfEpisodeApproved == false)
+                .OrderBy(e => e.ReleaseDate) // Order by oldest release date
                 .ToListAsync();
         }
 

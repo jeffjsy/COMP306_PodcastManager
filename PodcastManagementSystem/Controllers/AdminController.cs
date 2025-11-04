@@ -1,8 +1,10 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.EntityFrameworkCore;
 using PodcastManagementSystem.Data;
+using PodcastManagementSystem.Interfaces;
 using PodcastManagementSystem.Models;
 using System;
 using System.Collections.Generic;
@@ -15,11 +17,13 @@ namespace PodcastManagementSystem.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IEpisodeRepository _episodeRepository;
 
-        public AdminController(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
+        public AdminController(ApplicationDbContext context, UserManager<ApplicationUser> userManager, IEpisodeRepository episodeRepository)
         {
             _context = context;
             _userManager = userManager;
+            _episodeRepository = episodeRepository;
         }
 
         // GET: Admin
@@ -319,6 +323,38 @@ namespace PodcastManagementSystem.Controllers
         /////////////////////////////////////////////////////////
         /// episodeCreationApprovalQueue
         /////////////////////////////////////////////////////////
+        public async Task<IActionResult> EpisodeCreationApprovalQueue()
+        {
+            return View(await _episodeRepository.GetAllUnapprovedEpisodesAsync());
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ApproveEpisodeCreation(int episodeId)
+        {
+            //var episode_result = await _episodeRepository.GetEpisodeByIdAsync(episode.EpisodeID);
+            // Approve logic for the episode with ID = podcastId
+            //var episodeNew = new Episode
+            //{
+            //    PodcastID = episode.PodcastID,
+            //    Title = episode.Title,
+            //    Description = episode.Description,
+            //    ReleaseDate = DateTime.UtcNow,
+            //    AudioFileURL = episode.AudioFileURL,
+            //    DurationMinutes = episode.DurationMinutes
+
+            //};
+            
+            await _episodeRepository.ApproveEpisodeByIdAsync(episodeId);
+            return RedirectToAction("EpisodeCreationApprovalQueue");
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> DenyEpisodeCreation(int episodeId)
+        {
+            await _episodeRepository.DeleteEpisodeByIdAsync(episodeId);
+            // Deny logic for the episode with ID = podcastId
+            return RedirectToAction("EpisodeCreationApprovalQueue");
+        }
 
 
         /////////////////////////////////////////////////////////

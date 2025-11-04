@@ -5,6 +5,7 @@ using Amazon.S3;
 using Amazon.SimpleSystemsManagement;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.Extensions.DependencyInjection;
 using PodcastManagementSystem.Data;
 using PodcastManagementSystem.Interfaces;
@@ -13,6 +14,9 @@ using PodcastManagementSystem.Repositories;
 using PodcastManagementSystem.Services;
 using Amazon.Extensions.Configuration.SystemsManager;
 using Amazon;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -167,6 +171,7 @@ async Task SeedDbWithEntities()
         //await SeedTestAdminUserAsync(scope.ServiceProvider);
         await SeedUsers(scope.ServiceProvider);
         await SeedPodcasts(scope.ServiceProvider);
+        //await SeedPodcastsAndEpisodes(scope.ServiceProvider);
 
     }
 }
@@ -258,8 +263,8 @@ async Task SeedTestAdminUserAsync(IServiceProvider services)
     }
 }
 
-async Task SeedPodcasts(IServiceProvider services)
-{
+async Task SeedPodcasts(IServiceProvider services) {
+    //async Task SeedPodcastsAndEpisodes(IServiceProvider services) {
 
     using var scope = services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
@@ -303,5 +308,51 @@ async Task SeedPodcasts(IServiceProvider services)
         };
 
     dbContext.Podcasts.AddRange(podcasts);
+
+    //var episodes = new List<Episode>
+    //    {
+    //        new Episode
+    //        {
+    //            EpisodeID = 1,
+    //            PodcastID = podcasts[1].PodcastID,
+    //            Title = "podcast 1 - episode 1",
+    //            Description = "description 1",
+    //            ReleaseDate = DateTime.UtcNow,
+    //            DurationMinutes = 
+
+    //            //CreatorID = Guid.NewGuid(),
+    //            CreatedDate = DateTime.UtcNow
+    //        }
+
+
+    //    //public int EpisodeID { get; set; }
+    //    //public int PodcastID { get; set; }
+    //    //public string? Title { get; set; }
+    //    //public string? Description { get; set; }
+    //    //public DateTime ReleaseDate { get; set; }
+    //    //public int DurationMinutes { get; set; }
+    //    //public int PlayCount { get; set; }
+    //    //public string AudioFileURL { get; set; }
+    //    //public Podcast Podcast { get; set; }
+    //    //public bool CreationOfEpisodeApproved { get; set; }// EpisodeID (PK, int, auto-increment) 
+
+    //    };
+
+    //var episodes = new Episode
+    //{
+    //    PodcastID = model.PodcastID,
+    //    Title = model.Title,
+    //    Description = model.Description,
+    //    ReleaseDate = DateTime.UtcNow,
+    //    AudioFileURL = audioFileUrl,
+    //    DurationMinutes = model.DurationMinutes
+    //};
+
+
+    //var _episodeRepository = new EpisodeRepository(dbContext,s3Client,);
+    //await _episodeRepository.AddEpisodeAsync(episodes);
+
+    //dbContext.Episodes.AddRange(episodes);
+
     dbContext.SaveChanges();
 }

@@ -113,7 +113,7 @@ namespace PodcastManagementSystem.Controllers
 
             // 3. Get the specific podcast channel
             var podcast = await _podcastRepository.GetPodcastByIdAsync(podcastId);
-              
+
             // Security Check: Ensure the podcast exists AND belongs to the current Podcaster
             if (podcast == null || podcast.CreatorID != userId)
             {
@@ -189,7 +189,7 @@ namespace PodcastManagementSystem.Controllers
 
 
         // ---------------------------------------------------------------------
-        // 3.5. UPDATE EPISODE  
+        // 3.5. UPDATE EPISODE   
         // ---------------------------------------------------------------------
 
         // POST: /Podcaster/EditEpisode
@@ -261,7 +261,6 @@ namespace PodcastManagementSystem.Controllers
             var episode = await _episodeRepository.GetEpisodeByIdAsync(id.Value);
             if (episode == null)
             {
-                // This is where you got the 404 before!
                 return NotFound();
             }
 
@@ -273,17 +272,39 @@ namespace PodcastManagementSystem.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteEpisodeConfirmed(int id)
         {
-            // Get Podcast ID BEFORE deleting the episode record!
-            int podcastId = await _episodeRepository.GetPodcastIdForEpisodeAsync(id);
-
-            await _episodeRepository.DeleteEpisodeByIdAsync(id);
-
-            if (podcastId > 0)
+            // Get the episode BEFORE deleting the record to access PodcastID and AudioFileURL
+            var episodeToDelete = await _episodeRepository.GetEpisodeByIdAsync(id);
+            if (episodeToDelete == null)
             {
-                // Redirect back to the managing page for the parent podcast
+                TempData["Error"] = "Episode not found.";
+                return RedirectToAction(nameof(Dashboard));
+            }
+
+            int podcastId = episodeToDelete.PodcastID;
+
+            try
+            {
+                // 1. Delete the episode from the RDBMS
+                await _episodeRepository.DeleteEpisodeByIdAsync(id);
+
+                // 2. Delete the file from S3 (assuming _s3Service has a delete method)
+                // This is an essential step for full cleanup
+                // await _s3Service.DeleteFileAsync(episodeToDelete.AudioFileURL); 
+
+                // 🌟 MODIFICATION: Delete the corresponding analytics entry from DynamoDB 🌟
+                await _analyticsRepository.DeleteEpisodeSummaryAsync(podcastId, id);
+
+                TempData["SuccessMessage"] = $"Episode '{episodeToDelete.Title}' and its analytics successfully deleted.";
+
+                // 3. Redirect back to the managing page for the parent podcast
                 return RedirectToAction("ManagePodcast", new { podcastId = podcastId });
             }
-            return RedirectToAction("Index", "Home");
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to delete episode {EpisodeId} and/or its associated data.", id);
+                TempData["Error"] = "Failed to complete deletion due to a server error.";
+                return RedirectToAction("ManagePodcast", new { podcastId = podcastId });
+            }
         }
 
         // ---------------------------------------------------------------------
@@ -318,17 +339,37 @@ namespace PodcastManagementSystem.Controllers
         public async Task<IActionResult> DeleteConfirmed(int podcastId)
         {
             var podcast = await _podcastRepository.GetPodcastByIdAsync(podcastId);
-            //delete episodes (s3 and sql)
-            await _episodeRepository.DeleteAllEpisodesByPodcastIdAsync(podcast.PodcastID);
-
-
-            //delete podcast (podcast)
 
             if (podcast == null || podcast.CreatorID != Guid.Parse(_userManager.GetUserId(User)))
                 return NotFound();
 
-            await _podcastRepository.DeletePodcastAsync(podcastId); //deletes subs then podcast
-             
+            try
+            {
+                // 1. Delete all associated episodes (RDBMS, S3, and Analytics)
+                var episodes = await _episodeRepository.GetEpisodesByPodcastIdAsync(podcastId);
+
+                // Manual analytics cleanup is safer if the repository doesn't handle it
+                foreach (var episode in episodes)
+                {
+                    await _analyticsRepository.DeleteEpisodeSummaryAsync(podcastId, episode.EpisodeID);
+                }
+
+                // Delete all episodes (SQL records and S3 files)
+                await _episodeRepository.DeleteAllEpisodesByPodcastIdAsync(podcast.PodcastID);
+
+
+                // 2. Delete the main podcast record (including subscriptions)
+                await _podcastRepository.DeletePodcastAsync(podcastId); // deletes subs then podcast
+
+                TempData["SuccessMessage"] = $"Podcast '{podcast.Title}' and all associated episodes were deleted.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to delete podcast {PodcastId} completely.", podcastId);
+                TempData["Error"] = "Failed to delete the podcast completely due to a server error.";
+                return RedirectToAction(nameof(ManagePodcast), new { podcastId });
+            }
+
             return RedirectToAction(nameof(Dashboard));
         }
 
@@ -369,7 +410,17 @@ namespace PodcastManagementSystem.Controllers
             if (existingPodcast == null || existingPodcast.CreatorID != userId)
                 return NotFound();
 
-            await _podcastRepository.EditPodcastAsync(podcastId, title, description);
+            try
+            {
+                await _podcastRepository.EditPodcastAsync(podcastId, title, description);
+                TempData["SuccessMessage"] = $"Podcast '{title}' updated successfully.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to edit podcast {PodcastId}.", podcastId);
+                TempData["Error"] = "Failed to update podcast due to a database error.";
+            }
+
 
             return RedirectToAction(nameof(Dashboard));
         }
@@ -378,7 +429,7 @@ namespace PodcastManagementSystem.Controllers
         // 7. Analytics
         // ---------------------------------------------------------------------
 
-        [Authorize(Roles = "Podcaster, Admin")] 
+        [Authorize(Roles = "Podcaster, Admin")]
         public async Task<IActionResult> EpisodeStats(int podcastId)
         {
             // 1. Fetch RDBMS data needed for display (Podcast and Episodes)
@@ -390,36 +441,42 @@ namespace PodcastManagementSystem.Controllers
                 return RedirectToAction(nameof(Dashboard));
             }
 
-            // Fetch all episodes belonging to this podcast to get their titles
+            // Fetch all episodes belonging to this podcast to get their titles AND ReleaseDate
             var allEpisodes = await _episodeRepository.GetEpisodesByPodcastIdAsync(podcastId);
-            var episodeMap = allEpisodes.ToDictionary(e => e.EpisodeID, e => e.Title);
+
+            var episodeMap = allEpisodes.ToDictionary(e => e.EpisodeID, e => e);
 
             // 2. Get Summary Data from DynamoDB
-            // This fetches pre-calculated metrics (views, comments) for all episodes in this podcast
             var summaries = await _analyticsRepository.GetEpisodeSummariesByPodcastIdAsync(podcastId);
 
-            // 3. Sort the Data
+            // 3. Enrich and Sort the Data
             if (summaries != null)
             {
                 foreach (var summary in summaries)
                 {
-                    // Populate the RDBMS data (Title) onto the DynamoDB summary object
+                    // Populate the RDBMS data (Title and ReleaseDate) onto the DynamoDB summary object
                     if (episodeMap.ContainsKey(summary.EpisodeID))
                     {
-                        summary.EpisodeTitle = episodeMap[summary.EpisodeID];
+                        var episodeData = episodeMap[summary.EpisodeID];
+
+                        summary.EpisodeTitle = episodeData.Title;
+
+                        summary.ReleaseDate = episodeData.ReleaseDate;
                     }
                     // If the episode is deleted from the RDBMS, we can skip it or mark it
                     else
                     {
                         summary.EpisodeTitle = "[Deleted Episode]";
+                        // Initialize date for consistency, assuming a default or min date
+                        summary.ReleaseDate = DateTime.MinValue;
                     }
                     summary.PodcastTitle = podcast.Title;
                 }
 
-                // Sort by ViewCount descending and take the top 10 (or all available)
+                // Sort by ViewCount descending (default, but now the view can override this)
                 summaries = summaries
-                                .OrderByDescending(s => s.ViewCount)
-                                .ToList();
+                                    .OrderByDescending(s => s.ViewCount)
+                                    .ToList();
             }
             else
             {
@@ -430,11 +487,50 @@ namespace PodcastManagementSystem.Controllers
             var model = new EpisodeStatsViewModel
             {
                 PodcastTitle = podcast.Title,
-                // Passing all sorted summaries to the view
                 TopEpisodes = summaries
             };
 
             return View(model);
+        }
+
+        // Search 
+
+        // GET: Podcaster/SearchEpisodes?podcastId=5&query=interview&searchBy=Topic
+        [Authorize(Roles = "Podcaster, Admin")]
+        public async Task<IActionResult> SearchEpisodes(int podcastId, string query, string searchBy)
+        {
+            // 1. Basic validation
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                TempData["Error"] = "Please enter a search term.";
+                return RedirectToAction(nameof(ManagePodcast), new { podcastId });
+            }
+
+            // 2. Security Check: Ensure the user owns the podcast
+            var podcast = await _podcastRepository.GetPodcastByIdAsync(podcastId);
+            var currentUserId = Guid.Parse(_userManager.GetUserId(User));
+
+            if (podcast == null || podcast.CreatorID != currentUserId)
+            {
+                return Forbid();
+            }
+
+            // 3. Execute the search
+            var results = await _episodeRepository.SearchEpisodesAsync(podcastId, query, searchBy);
+
+            // 4. Prepare the results view model
+            var viewModel = new ChannelDetailsViewModel
+            {
+                Channel = podcast,
+                Episodes = results.ToList()
+            };
+
+            // 5. Use a dedicated view or reuse the ManagePodcast view
+            ViewData["SearchQuery"] = query;
+            ViewData["SearchType"] = searchBy;
+
+           
+            return View("SearchResults", viewModel);
         }
     }
 }

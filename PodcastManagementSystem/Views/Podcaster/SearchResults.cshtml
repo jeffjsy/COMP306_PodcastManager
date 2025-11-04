@@ -1,0 +1,79 @@
+﻿@model PodcastManagementSystem.Models.ViewModels.ChannelDetailsViewModel
+
+@{
+    ViewData["Title"] = $"Search Results: {ViewData["SearchQuery"]}";
+    var podcastId = Model.Channel.PodcastID;
+}
+
+<div class="d-flex justify-content-between align-items-center mt-4 mb-4">
+    <h1>🎙️ Search Results for: "@ViewData["SearchQuery"]"</h1>
+    <div>
+        <a asp-action="ManagePodcast" asp-route-podcastId="@podcastId" class="btn btn-outline-secondary">
+            <i class="bi bi-x-circle"></i> Clear Search & Back to Management
+        </a>
+    </div>
+</div>
+
+<hr />
+
+@* --- Search Summary --- *@
+<div class="alert alert-primary mb-4" role="alert">
+    <strong>Search Filter:</strong> Found <strong>@Model.Episodes.Count</strong> episodes matching "@ViewData["SearchQuery"]" by <strong>@ViewData["SearchType"]</strong> within the channel <strong>@Model.Channel.Title</strong>.
+</div>
+
+
+@* --- Episodes Management Table (Reusing the structure from ManagePodcast) --- *@
+<h3>Filtered Episodes (@Model.Episodes.Count)</h3>
+
+@if (Model.Episodes == null || !Model.Episodes.Any())
+{
+    <div class="alert alert-info mt-3">
+        No episodes matched your search query.
+    </div>
+}
+else
+{
+    <table class="table table-striped table-hover mt-3">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Approved/Live</th>
+                <th>Release Date</th>
+                <th>Duration (min)</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var episode in Model.Episodes)
+            {
+                <tr>
+                    <td>@episode.Title</td>
+                    <td>
+                        @if (!episode.CreationOfEpisodeApproved)
+                        {
+                            <span class="text-warning">(Unapproved)</span>
+                        }
+                        else
+                        {
+
+                            <span class="text-success">(Approved)</span>
+                        }
+                    </td>
+                    <td>@episode.ReleaseDate.ToShortDateString()</td>
+                    <td>@episode.DurationMinutes</td>
+                    <td>
+                        @* Action to edit this specific episode *@
+                        <a asp-action="EditEpisode"
+                           asp-route-id="@episode.EpisodeID"
+                           class="btn btn-sm btn-info">Edit</a>
+
+                        @* Action to delete this specific episode *@
+                        <a asp-action="DeleteEpisode"
+                           asp-route-id="@episode.EpisodeID"
+                           class="btn btn-sm btn-danger ms-2">Delete</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

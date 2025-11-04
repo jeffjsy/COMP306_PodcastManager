@@ -32,6 +32,8 @@ namespace PodcastManagementSystem.Interfaces
         Task<int> GetPodcastIdForEpisodeAsync(int episodeId);
 
         Task<List<Episode>> GetEpisodesByPodcastIdAsync(int podcastId);
+
+        Task<List<Episode>> SearchEpisodesAsync(int podcastId, string query, string searchBy);
         // Get all unapproved episodes for podcast approval queue
         Task<IEnumerable<Episode>> GetAllUnapprovedEpisodesAsync();
     }

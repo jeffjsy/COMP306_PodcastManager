@@ -13,6 +13,14 @@
     </div>
 </div>
 
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
 <hr />
 
 @* --- Channel Details Summary --- *@
@@ -36,13 +44,48 @@
     </div>
 </div>
 
+@* ------------------------------------------------------------------------- *@
+@* --- EPISODE SEARCH FORM  --- *@
+@* ------------------------------------------------------------------------- *@
+<div class="row mb-4">
+    <div class="col-md-12">
+        <form asp-action="SearchEpisodes" asp-controller="Podcaster" method="get" class="d-flex bg-light p-3 rounded shadow-sm">
+            <input type="hidden" name="podcastId" value="@Model.Channel.PodcastID" />
+            <select name="searchBy" class="form-select w-auto me-2" aria-label="Search by field" style="max-width: 150px;">
+                <option value="Topic">Topic/Keyword</option>
+                <option value="Host">Host</option>
+            </select>
+            <input type="search" name="query" class="form-control me-2" placeholder="Enter topic, keyword, or host name..." aria-label="Search" required>
+            <button type="submit" class="btn btn-dark">
+                <i class="bi bi-search"></i> Search
+            </button>
+            <a asp-action="ManagePodcast" asp-route-podcastId="@Model.Channel.PodcastID" class="btn btn-outline-danger ms-2">
+                Clear
+            </a>
+        </form>
+    </div>
+</div>
+
 @* --- Episodes Management Table --- *@
 <h3>Episodes (@Model.Episodes.Count)</h3>
+
+@if (ViewData["SearchQuery"] != null)
+{
+    <p class="text-muted">Showing results for <strong>"@ViewData["SearchQuery"]"</strong> (Search Type: @ViewData["SearchType"]). <a asp-action="ManagePodcast" asp-route-podcastId="@Model.Channel.PodcastID">View All</a></p>
+}
+
 
 @if (Model.Episodes == null || !Model.Episodes.Any())
 {
     <div class="alert alert-info mt-3">
-        No episodes published yet. Use the "Add New Episode" button above to get started!
+        @if (ViewData["SearchQuery"] != null)
+        {
+            <span>No episodes matched your search criteria.</span>
+        }
+        else
+        {
+            <span>No episodes published yet. Use the "Add New Episode" button above to get started!</span>
+        }
     </div>
 }
 else

@@ -1,4 +1,4 @@
-using Amazon.DynamoDBv2;
+﻿using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.DataModel;
 using Amazon.Extensions.NETCore.Setup;
 using Amazon.S3;
@@ -12,20 +12,57 @@ using PodcastManagementSystem.Interfaces;
 using PodcastManagementSystem.Models;
 using PodcastManagementSystem.Repositories;
 using PodcastManagementSystem.Services;
+using Amazon.Extensions.Configuration.SystemsManager;
+using Amazon;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 var builder = WebApplication.CreateBuilder(args);
 
+
 // ----------------------------------------------------
-// 1. Configuration and Connection String Retrieval
+// 1. AWS Parameter Store Integration 
 // ----------------------------------------------------
+// Retrieve the root path and region from appsettings.json
+var ssmPath = builder.Configuration.GetValue<string>("AWS:SSMConfigRootPath");
+var awsRegion = builder.Configuration.GetValue<string>("AWS:Region");
+
+// IMPORTANT: This block must execute BEFORE we retrieve the connection string.
+if (!string.IsNullOrEmpty(ssmPath))
+{
+    try
+    {
+        // Configure the Parameter Store as a high-priority configuration source.
+        builder.Configuration.AddSystemsManager(source =>
+        {
+            source.Path = ssmPath;
+
+            source.AwsOptions = new AWSOptions
+            {
+                Region = RegionEndpoint.GetBySystemName(awsRegion)
+            };
+
+            source.Optional = false; // Fail fast if the secure config can't be loaded
+        });
+        Console.WriteLine($"Successfully configured Parameter Store integration for path: {ssmPath}");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"WARNING: Failed to load configuration from AWS Parameter Store. Using local connection string. Error: {ex.Message}");
+    }
+}
+
+
+// ----------------------------------------------------
+// 2. Configuration and Connection String Retrieval (MODIFIED)
+// ----------------------------------------------------
+
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ??
     throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
 // ----------------------------------------------------
-// 2. Add services to the container (Core ASP.NET Identity/MVC)
+// 3. Add services to the container (Core ASP.NET Identity/MVC)
 // ----------------------------------------------------
 // a. DbContext Registration 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -50,7 +87,7 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
 
 //builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
 //{
-//    options.SignIn.RequireConfirmedAccount = true;
+//	 options.SignIn.RequireConfirmedAccount = true;
 //})
 //.AddEntityFrameworkStores<ApplicationDbContext>()
 //.AddDefaultUI() // Keep this here to register the Identity Pages
@@ -61,7 +98,7 @@ builder.Services.AddControllersWithViews();
 
 
 // ----------------------------------------------------
-// 3. AWS Service Registration
+// 4. AWS Service Registration
 // ----------------------------------------------------
 // a. Configure AWS Options 
 var awsOptions = builder.Configuration.GetAWSOptions();
@@ -79,7 +116,7 @@ builder.Services.AddScoped<IDynamoDBContext, DynamoDBContext>();
 // d. Register Repositories and Services
 builder.Services.AddScoped<ICommentRepository, DynamoDbCommentRepository>();
 builder.Services.AddScoped<IPodcastRepository, PodcastRepository>();
-builder.Services.AddScoped<IS3Service, S3Service>();             
+builder.Services.AddScoped<IS3Service, S3Service>();
 builder.Services.AddScoped<IParameterStoreService, ParameterStoreService>();
 builder.Services.AddScoped<IEpisodeRepository, EpisodeRepository>();
 builder.Services.AddScoped<IAnalyticsRepository, DynamoDbAnalyticsRepository>();
@@ -121,12 +158,9 @@ app.Run();
 
 
 
-/////////////////////////////////////////////
-///
-//SEEDING DB Methods
 
-
-async Task SeedDbWithEntities() {
+async Task SeedDbWithEntities()
+{
     using (var scope = app.Services.CreateScope())
     {
         //seeds User Roles onto db on every run of app (To ensure db has Roles)
@@ -145,21 +179,22 @@ async Task SeedDbWithEntities() {
 
 async Task SeedRolesCreatedAsync(IServiceProvider services)
 {
-    using var scope = services.CreateScope();       
+    using var scope = services.CreateScope();
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
     string[] roles = { "Admin", "Podcaster", "ListenerViewer" };
     foreach (var role in roles)
     {
-        
+
         if (!await roleManager.RoleExistsAsync(role))
         {
-           
+
             await roleManager.CreateAsync(new IdentityRole<Guid>(role));
         }
     }
 }
 
-async Task SeedUsers(IServiceProvider services) {
+async Task SeedUsers(IServiceProvider services)
+{
     await SeedTestListenerViewerUserAsync(services);
     await SeedTestPodcasterUserAsync(services);
     await SeedTestAdminUserAsync(services);
@@ -321,4 +356,3 @@ async Task SeedPodcasts(IServiceProvider services) {
 
     dbContext.SaveChanges();
 }
-

@@ -13,6 +13,7 @@ public class EpisodeSummary
     public long ViewCount { get; set; }
     public long CommentCount { get; set; }
 
+    public DateTime ReleaseDate { get; set; }
 
     [DynamoDBIgnore]
     public string EpisodeTitle { get; set; }
